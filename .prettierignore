@@ -1,5 +1,0 @@
-cat << 'EOF' > .prettierignore
-.next
-out
-supabase
-EOF

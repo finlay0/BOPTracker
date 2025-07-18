@@ -16,19 +16,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-
-# ignore *real* secrets
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# ignore any other .env files that might pop up
-.env.*
-
-# but do track the example template
-!.env.example
-
+# env files
+.env*
 
 # vercel
 .vercel
