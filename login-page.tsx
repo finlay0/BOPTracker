@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    accessCode: "",
+    shopCode: "",
   })
   const [isLoading, setIsLoading] = useState(false)
 
@@ -43,9 +43,9 @@ export default function LoginPage() {
     setIsLoading(true)
 
     if (isSignUp) {
-      // Validate access code (you can customize this validation)
-      if (!formData.accessCode.trim()) {
-        alert("Access code is required")
+      // Validate shop code (you can customize this validation)
+      if (!formData.shopCode.trim()) {
+        alert("Shop code is required")
         setIsLoading(false)
         return
       }
@@ -60,7 +60,7 @@ export default function LoginPage() {
       await new Promise((resolve) => setTimeout(resolve, 1500))
       alert("Account created successfully! Please sign in.")
       setIsSignUp(false)
-      setFormData({ email: formData.email, password: "", accessCode: "" })
+      setFormData({ email: formData.email, password: "", shopCode: "" })
     } else {
       // Simulate login
       await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -73,21 +73,18 @@ export default function LoginPage() {
 
   const toggleMode = () => {
     setIsSignUp(!isSignUp)
-    setFormData({ email: "", password: "", accessCode: "" })
+    setFormData({ email: "", password: "", shopCode: "" })
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">
       <Card className="w-full max-w-md p-8 bg-white dark:bg-gray-800 shadow-xl border-0 rounded-2xl">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-xl">BT</span>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            {isSignUp ? "Create Account" : "Welcome Back"}
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Welcome to BOP Tracker</h1>
           <p className="text-gray-600 dark:text-gray-400">
-            {isSignUp ? "Join BOP Tracker to manage your wine batches" : "Sign in to manage your wine batches"}
+            {isSignUp
+              ? "Create your account to manage wine batches"
+              : "Sign in or create your account to manage wine batches"}
           </p>
         </div>
 
@@ -106,26 +103,6 @@ export default function LoginPage() {
               required
             />
           </div>
-
-          {isSignUp && (
-            <div>
-              <label htmlFor="accessCode" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Access Code <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="accessCode"
-                value={formData.accessCode}
-                onChange={(e) => handleInputChange("accessCode", e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder="Enter your access code"
-                required
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Contact your administrator for an access code
-              </p>
-            </div>
-          )}
 
           <div>
             <label htmlFor="password" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -170,6 +147,26 @@ export default function LoginPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {isSignUp && (
+            <div>
+              <label htmlFor="shopCode" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Shop Code <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="shopCode"
+                value={formData.shopCode}
+                onChange={(e) => handleInputChange("shopCode", e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                placeholder="Enter your shop code"
+                required
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Contact your administrator for a shop code
+              </p>
             </div>
           )}
 
