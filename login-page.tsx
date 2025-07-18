@@ -1,204 +1,172 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, EyeOff, Check, X } from "lucide-react"
-
-interface PasswordRequirement {
-  text: string
-  met: boolean
-}
 
 export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    shopCode: "",
-  })
-  const [isLoading, setIsLoading] = useState(false)
+  const [password, setPassword] = useState("")
+  const [email, setEmail] = useState("")
+  const [shopCode, setShopCode] = useState("")
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  // Password strength validation
+  const passwordRequirements = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
   }
 
-  const getPasswordRequirements = (password: string): PasswordRequirement[] => {
-    return [
-      { text: "At least 8 characters", met: password.length >= 8 },
-      { text: "Contains uppercase letter", met: /[A-Z]/.test(password) },
-      { text: "Contains lowercase letter", met: /[a-z]/.test(password) },
-      { text: "Contains number", met: /\d/.test(password) },
-      { text: "Contains special character", met: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
-    ]
-  }
+  const isPasswordValid = Object.values(passwordRequirements).every(Boolean)
+  const canSubmitSignUp = email && password && isPasswordValid && shopCode
 
-  const passwordRequirements = getPasswordRequirements(formData.password)
-  const isPasswordStrong = passwordRequirements.every((req) => req.met)
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-
     if (isSignUp) {
-      // Validate shop code (you can customize this validation)
-      if (!formData.shopCode.trim()) {
-        alert("Shop code is required")
-        setIsLoading(false)
-        return
+      if (canSubmitSignUp) {
+        console.log("Sign up:", { email, password, shopCode })
       }
-
-      if (!isPasswordStrong) {
-        alert("Please ensure your password meets all requirements")
-        setIsLoading(false)
-        return
-      }
-
-      // Simulate sign up
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      alert("Account created successfully! Please sign in.")
-      setIsSignUp(false)
-      setFormData({ email: formData.email, password: "", shopCode: "" })
     } else {
-      // Simulate login
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      // Redirect to main app
-      window.location.href = "/"
+      console.log("Sign in:", { email, password })
     }
-
-    setIsLoading(false)
-  }
-
-  const toggleMode = () => {
-    setIsSignUp(!isSignUp)
-    setFormData({ email: "", password: "", shopCode: "" })
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">
-      <Card className="w-full max-w-md p-8 bg-white dark:bg-gray-800 shadow-xl border-0 rounded-2xl">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Welcome to BOP Tracker</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            {isSignUp
-              ? "Create your account to manage wine batches"
-              : "Sign in or create your account to manage wine batches"}
-          </p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4">
+      <Card className="w-full max-w-md shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader className="space-y-2 text-center pb-6">
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            Welcome to BOP Tracker
+          </CardTitle>
+          <CardDescription className="text-gray-600">
+            {isSignUp ? "Create your account to get started" : "Sign in or create your account to manage wine batches"}
+          </CardDescription>
+        </CardHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              placeholder="Enter your email"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                id="password"
-                value={formData.password}
-                onChange={(e) => handleInputChange("password", e.target.value)}
-                className="w-full px-4 py-3 pr-12 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
+        <CardContent className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
+                className="h-11"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
             </div>
-          </div>
 
-          {isSignUp && formData.password && (
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Password Requirements</h4>
-              <div className="space-y-2">
-                {passwordRequirements.map((req, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    {req.met ? (
-                      <Check size={16} className="text-green-500" />
-                    ) : (
-                      <X size={16} className="text-red-500" />
-                    )}
-                    <span
-                      className={`text-xs ${req.met ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}
-                    >
-                      {req.text}
-                    </span>
-                  </div>
-                ))}
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="h-11 pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-11 px-3 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
+                </Button>
               </div>
-            </div>
-          )}
 
-          {isSignUp && (
-            <div>
-              <label htmlFor="shopCode" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Shop Code <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="shopCode"
-                value={formData.shopCode}
-                onChange={(e) => handleInputChange("shopCode", e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder="Enter your shop code"
-                required
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Contact your administrator for a shop code
-              </p>
+              {isSignUp && password && (
+                <div className="space-y-2 mt-3">
+                  <p className="text-sm font-medium text-gray-700">Password Requirements:</p>
+                  <div className="grid grid-cols-1 gap-1 text-xs">
+                    {Object.entries({
+                      length: "At least 8 characters",
+                      uppercase: "One uppercase letter",
+                      lowercase: "One lowercase letter",
+                      number: "One number",
+                      special: "One special character",
+                    }).map(([key, label]) => (
+                      <div key={key} className="flex items-center gap-2">
+                        {passwordRequirements[key as keyof typeof passwordRequirements] ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <X className="h-3 w-3 text-red-500" />
+                        )}
+                        <span
+                          className={
+                            passwordRequirements[key as keyof typeof passwordRequirements]
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }
+                        >
+                          {label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
 
-          <Button
-            type="submit"
-            disabled={isLoading || (isSignUp && !isPasswordStrong)}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (isSignUp ? "Creating Account..." : "Signing In...") : isSignUp ? "Create Account" : "Sign In"}
-          </Button>
-        </form>
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="shopCode">Shop Code</Label>
+                <Input
+                  id="shopCode"
+                  type="text"
+                  placeholder="Enter your shop code"
+                  value={shopCode}
+                  onChange={(e) => setShopCode(e.target.value)}
+                  required
+                  className="h-11"
+                />
+                <p className="text-xs text-gray-500">Contact your administrator for your shop code</p>
+              </div>
+            )}
 
-        <div className="mt-8 text-center">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200 dark:border-gray-600" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                {isSignUp ? "Already have an account?" : "Don't have an account?"}
-              </span>
-            </div>
+            <Button
+              type="submit"
+              className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium transition-all duration-200"
+              disabled={isSignUp && !canSubmitSignUp}
+            >
+              {isSignUp ? "Create Account" : "Sign In"}
+            </Button>
+          </form>
+
+          <div className="text-center">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setIsSignUp(!isSignUp)
+                setPassword("")
+                setEmail("")
+                setShopCode("")
+              }}
+              className="text-sm text-gray-600 hover:text-gray-800"
+            >
+              {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={toggleMode}
-            className="mt-4 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold"
-          >
-            {isSignUp ? "Sign In" : "Sign Up"}
-          </Button>
-        </div>
+        </CardContent>
       </Card>
     </div>
   )
