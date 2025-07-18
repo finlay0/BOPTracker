@@ -32,7 +32,7 @@ export function BottomTabBar({ activeTab, onTabChange }: BottomTabBarProps) {
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               }`}
             >
-              <div className="h-5 flex items-center justify-center mb-1">
+              <div className="h-6 w-6 flex items-center justify-center mb-1">
                 <Icon className="w-5 h-5" />
               </div>
               <span className="text-xs font-medium leading-none">{tab.label}</span>

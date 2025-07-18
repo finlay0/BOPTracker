@@ -1456,12 +1456,19 @@ function SettingsView() {
               </div>
 
               {/* Logout Button */}
-              <div className="pt-4">
+              <div className="px-6 py-4 flex flex-col gap-4">
                 <button
                   onClick={handleLogout}
-                  className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white font-medium py-4 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98]"
+                  className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white font-medium py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98]"
                 >
                   Log Out
+                </button>
+                {/* TEMP: Admin Panel Button */}
+                <button
+                  onClick={() => router.push("/admin")}
+                  className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 px-4 rounded-xl shadow-sm transition-all duration-200 active:scale-[0.98] border-2 border-yellow-600"
+                >
+                  TEMP: Go to Admin Panel
                 </button>
               </div>
 
@@ -1613,7 +1620,7 @@ export default function BOPTracker() {
   const getPageSubtitle = () => {
     switch (activeTab) {
       case "today":
-        return formatSelectedDate(selectedDate)
+        return "BOP Tracker"
       case "batches":
         return "Manage your wine batches"
       case "new":
@@ -1733,7 +1740,7 @@ export default function BOPTracker() {
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
               {Object.entries(selectedGroupedTasks)
                 .sort(([a], [b]) => {
-                  const order = ["Bottle Today", "Filter Today", "Rack Today", "Put-Up Today", "Overdue"]
+                  const order = ["Overdue", "Put-Up Today", "Rack Today", "Filter Today", "Bottle Today"]
                   const aIndex = order.indexOf(a)
                   const bIndex = order.indexOf(b)
 
@@ -1821,7 +1828,7 @@ export default function BOPTracker() {
                                                 : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" // Fallback
                                   }`}
                                 >
-                                  {task.action}
+                                  {task.action === "Start" ? "Put-Up" : task.action}
                                 </span>
                                 <span className="text-sm font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
                                   {task.bopNumber}
