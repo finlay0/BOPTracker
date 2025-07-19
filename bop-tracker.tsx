@@ -1974,52 +1974,44 @@ export default function BOPTracker() {
             </div>
             {/* Mobile and Desktop Progress Circle */}
             {activeTab === "today" && (
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="text-right">
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Progress</p>
-                  <p className="text-sm sm:text-lg font-medium text-gray-900 dark:text-gray-100">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 relative" ref={progressCircleRef}>
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                  <path
+                    className="text-gray-200 dark:text-gray-700"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  <path
+                    className={
+                      completedCount === totalCount && totalCount > 0
+                        ? "text-green-500 dark:text-green-400"
+                        : "text-blue-600 dark:text-blue-500"
+                    }
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeDasharray={`${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}, 100`}
+                    strokeLinecap="round"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    style={{
+                      transition: "stroke-dasharray 0.3s ease-in-out",
+                    }}
+                  />
+                </svg>
+                {/* Center progress counter inside the ring */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs sm:text-sm lg:text-base font-semibold text-gray-900 dark:text-gray-100">
                     {completedCount}/{totalCount}
-                  </p>
+                  </span>
                 </div>
-                <div ref={progressCircleRef} className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 relative">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                    <path
-                      className="text-gray-200 dark:text-gray-700"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                    <path
-                      className={
-                        completedCount === totalCount && totalCount > 0
-                          ? "text-green-500 dark:text-green-400"
-                          : "text-blue-600 dark:text-blue-500"
-                      }
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeDasharray={`${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}, 100`}
-                      strokeLinecap="round"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      style={{
-                        transition: "stroke-dasharray 0.3s ease-in-out",
-                      }}
-                    />
-                    {/* Center percentage text for larger screens */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="hidden sm:block text-xs lg:text-sm font-semibold text-gray-600 dark:text-gray-400">
-                        {totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%
-                      </span>
-                    </div>
-                  </svg>
-                  {/* Confetti positioned at the center of the progress circle */}
-                  {showConfetti && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <Confetti trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
-                    </div>
-                  )}
-                </div>
+                {/* Confetti positioned at the center of the progress circle */}
+                {showConfetti && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <Confetti trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
+                  </div>
+                )}
               </div>
             )}
           </div>

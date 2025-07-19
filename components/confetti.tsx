@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useEffect, useState } from "react"
 
 interface ConfettiProps {
@@ -9,91 +7,132 @@ interface ConfettiProps {
   onComplete?: () => void
 }
 
+interface Particle {
+  id: number
+  x: number
+  y: number
+  vx: number
+  vy: number
+  color: string
+  size: number
+  rotation: number
+  rotationSpeed: number
+  opacity: number
+}
+
 export function Confetti({ trigger, onComplete }: ConfettiProps) {
+  const [particles, setParticles] = useState<Particle[]>([])
   const [isActive, setIsActive] = useState(false)
 
   useEffect(() => {
-    if (trigger) {
-      setIsActive(true)
-      const timer = setTimeout(() => {
-        setIsActive(false)
-        onComplete?.()
-      }, 2000) // Reduced from 4.5s to 2s for shorter duration
+    if (!trigger) return
 
-      return () => clearTimeout(timer)
-    }
+    setIsActive(true)
+
+    // Apple-inspired color palette
+    const colors = [
+      "#007AFF", // Apple Blue
+      "#34C759", // Apple Green
+      "#FF9500", // Apple Orange
+      "#FF3B30", // Apple Red
+      "#AF52DE", // Apple Purple
+      "#5AC8FA", // Apple Light Blue
+      "#FFCC00", // Apple Yellow
+      "#FF2D92", // Apple Pink
+    ]
+
+    // Create particles with Apple-like refinement
+    const newParticles: Particle[] = Array.from({ length: 16 }, (_, i) => {
+      const angle = (i / 16) * Math.PI * 2
+      const velocity = 80 + Math.random() * 40 // Keep same blast radius
+
+      return {
+        id: i,
+        x: 0,
+        y: 0,
+        vx: Math.cos(angle) * velocity,
+        vy: Math.sin(angle) * velocity,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: 3 + Math.random() * 3, // Smaller, more refined sizes
+        rotation: Math.random() * 360,
+        rotationSpeed: (Math.random() - 0.5) * 180, // Reduced rotation speed
+        opacity: 1,
+      }
+    })
+
+    setParticles(newParticles)
+
+    // Clean up after shorter duration
+    const timer = setTimeout(() => {
+      setIsActive(false)
+      setParticles([])
+      onComplete?.()
+    }, 2000) // Reduced from 4500ms to 2000ms
+
+    return () => clearTimeout(timer)
   }, [trigger, onComplete])
 
-  if (!isActive) return null
-
-  // Generate fewer particles for more subtle effect (Apple-like)
-  const particles = Array.from({ length: 16 }).map((_, i) => {
-    const angle = (i / 16) * 360
-    const velocity = 80 + Math.random() * 60 // Keep same blast radius
-    const size = Math.random() > 0.8 ? "large" : "small" // Fewer large particles
-    const shape = "circle" // Apple prefers circles over squares
-    // Apple-inspired color palette - more refined and subtle
-    const color = [
-      "#007AFF", // Apple blue
-      "#34C759", // Apple green
-      "#FF9500", // Apple orange
-      "#FF3B30", // Apple red
-      "#AF52DE", // Apple purple
-      "#5AC8FA", // Apple light blue
-      "#FFCC00", // Apple yellow
-      "#FF2D92", // Apple pink
-    ][Math.floor(Math.random() * 8)]
-
-    return {
-      id: i,
-      angle,
-      velocity,
-      size,
-      shape,
-      color,
-      delay: Math.random() * 0.1, // Reduced delay for tighter timing
-    }
-  })
+  if (!isActive || particles.length === 0) return null
 
   return (
-    <>
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {particles.map((particle) => (
         <div
           key={particle.id}
-          className="absolute animate-burst"
-          style={
-            {
-              "--angle": `${particle.angle}deg`,
-              "--velocity": `${particle.velocity}px`,
-              "--delay": `${particle.delay}s`,
-              animationDelay: `${particle.delay}s`,
-            } as React.CSSProperties
-          }
-        >
-          <div
-            className={`${particle.size === "large" ? "w-2.5 h-2.5" : "w-1.5 h-1.5"} rounded-full opacity-80`}
-            style={{
-              backgroundColor: particle.color,
-              boxShadow: `0 0 4px ${particle.color}30`, // Softer glow
-            }}
-          />
-        </div>
+          className="absolute w-1 h-1 rounded-full"
+          style={{
+            left: "50%",
+            top: "50%",
+            backgroundColor: particle.color,
+            width: `${particle.size}px`,
+            height: `${particle.size}px`,
+            boxShadow: `0 0 ${particle.size * 2}px ${particle.color}40`, // Reduced glow
+            animation: `confetti-${particle.id} 2s ease-out forwards`, // Shorter duration
+          }}
+        />
       ))}
 
-      {/* Reduced sparkle effects for subtlety */}
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={`sparkle-${i}`}
-          className="absolute animate-sparkle"
-          style={{
-            left: `${-3 + Math.random() * 6}px`,
-            top: `${-3 + Math.random() * 6}px`,
-            animationDelay: `${Math.random() * 0.3}s`,
-          }}
-        >
-          <div className="w-0.5 h-0.5 bg-white rounded-full opacity-60" />
-        </div>
-      ))}
-    </>
+      {/* Subtle sparkle effect */}
+      <div className="absolute inset-0 animate-pulse">
+        {Array.from({ length: 3 }).map(
+          (
+            _,
+            i, // Reduced sparkles
+          ) => (
+            <div
+              key={`sparkle-${i}`}
+              className="absolute w-1 h-1 bg-white rounded-full opacity-60"
+              style={{
+                left: `${45 + Math.random() * 10}%`,
+                top: `${45 + Math.random() * 10}%`,
+                animationDelay: `${i * 0.2}s`,
+                animationDuration: "1s", // Shorter sparkle duration
+              }}
+            />
+          ),
+        )}
+      </div>
+
+      <style jsx>{`
+        ${particles
+          .map(
+            (particle) => `
+          @keyframes confetti-${particle.id} {
+            0% {
+              transform: translate(-50%, -50%) rotate(${particle.rotation}deg);
+              opacity: 1;
+            }
+            100% {
+              transform: translate(calc(-50% + ${particle.vx}px), calc(-50% + ${particle.vy}px)) rotate(${
+                particle.rotation + particle.rotationSpeed * 2
+              }deg);
+              opacity: 0;
+            }
+          }
+        `,
+          )
+          .join("")}
+      `}</style>
+    </div>
   )
 }
