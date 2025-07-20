@@ -172,6 +172,9 @@ export default function AdminPanel() {
   const [newWineryName, setNewWineryName] = useState("")
   const [newWineryLocation, setNewWineryLocation] = useState("")
 
+  // keep a filtered list of users for the currently-selected winery
+  const [usersForWinery, setUsersForWinery] = useState<User[]>([])
+
   useEffect(() => {
     if (selectedWinery) {
       setUsersForWinery(users.filter((user) => user.winery === selectedWinery.name))
@@ -179,8 +182,6 @@ export default function AdminPanel() {
       setUsersForWinery([])
     }
   }, [selectedWinery, users])
-
-  const [usersForWinery, setUsersForWinery] = useState<User[]>([])
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
