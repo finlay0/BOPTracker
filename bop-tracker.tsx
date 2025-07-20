@@ -1035,6 +1035,26 @@ function NewBatchView() {
             </div>
           </div>
         )}
+
+        {/* Sticky Save Button */}
+        <div className="sticky bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+          <div className="max-w-2xl mx-auto">
+            <button
+              onClick={handleSave}
+              disabled={isLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-blue-400 dark:disabled:bg-blue-600 text-white font-medium py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Creating Batch...</span>
+                </div>
+              ) : (
+                "Create Batch"
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -2,26 +2,25 @@ export interface Winery {
   id: number
   name: string
   location: string
-  userCount: number
-  status: "active" | "trial" | "inactive"
   accessCode: string
+  createdAt: string
 }
 
 export interface User {
   id: number
+  name: string
   email: string
-  winery: string
-  status: "active" | "inactive"
-  lastLogin: string
+  wineryId: number
+  wineryName: string
+  createdAt: string
 }
 
 export interface SupportMessage {
   id: number
-  winery: string
-  user: string
-  date: string
   subject: string
-  preview: string
   message: string
+  userEmail: string
+  wineryName: string
   status: "open" | "resolved"
+  createdAt: string
 }

@@ -1,764 +1,529 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Plus, Users, Mail, ChevronRight, X, Trash, Edit, MessageSquare } from "lucide-react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { generateAccessCode } from "./utils/access-code"
-import type { Winery, User, SupportMessage } from "./types/admin"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { Trash2, Plus, Edit2, Check, X, MessageSquare, Users, Building2 } from "lucide-react"
+import { generateAccessCode } from "../utils/access-code"
+import type { Winery, User, SupportMessage } from "../types/admin"
 
 // Sample data
-const initialWineriesData: Winery[] = [
+const initialWineries: Winery[] = [
   {
     id: 1,
     name: "Sunset Valley Winery",
-    userCount: 8,
     location: "Napa Valley, CA",
-    status: "active",
-    accessCode: generateAccessCode(),
+    accessCode: "ABC123",
+    createdAt: "2024-01-15",
   },
   {
     id: 2,
-    name: "Mountain Ridge Cellars",
-    userCount: 5,
-    location: "Sonoma, CA",
-    status: "active",
-    accessCode: generateAccessCode(),
+    name: "Mountain View Vineyards",
+    location: "Sonoma County, CA",
+    accessCode: "DEF456",
+    createdAt: "2024-02-20",
   },
   {
     id: 3,
-    name: "Coastal Breeze Wines",
-    userCount: 12,
+    name: "Coastal Breeze Winery",
     location: "Monterey, CA",
-    status: "active",
-    accessCode: generateAccessCode(),
-  },
-  {
-    id: 4,
-    name: "Heritage Oak Winery",
-    userCount: 3,
-    location: "Paso Robles, CA",
-    status: "trial",
-    accessCode: generateAccessCode(),
+    accessCode: "GHI789",
+    createdAt: "2024-03-10",
   },
 ]
 
-const initialUsersData: User[] = [
+const initialUsers: User[] = [
   {
     id: 1,
+    name: "Sarah Johnson",
     email: "sarah@sunsetvalley.com",
-    winery: "Sunset Valley Winery",
-    status: "active",
-    lastLogin: "2024-07-15",
+    wineryId: 1,
+    wineryName: "Sunset Valley Winery",
+    createdAt: "2024-01-16",
   },
   {
     id: 2,
-    email: "mike@sunsetvalley.com",
-    winery: "Sunset Valley Winery",
-    status: "active",
-    lastLogin: "2024-07-14",
+    name: "Mike Chen",
+    email: "mike@mountainview.com",
+    wineryId: 2,
+    wineryName: "Mountain View Vineyards",
+    createdAt: "2024-02-21",
   },
   {
     id: 3,
-    email: "emily@mountainridge.com",
-    winery: "Mountain Ridge Cellars",
-    status: "active",
-    lastLogin: "2024-07-15",
+    name: "Emily Rodriguez",
+    email: "emily@coastalbreeze.com",
+    wineryId: 3,
+    wineryName: "Coastal Breeze Winery",
+    createdAt: "2024-03-11",
   },
   {
     id: 4,
-    email: "david@coastalbreeze.com",
-    winery: "Coastal Breeze Wines",
-    status: "active",
-    lastLogin: "2024-07-13",
-  },
-  {
-    id: 5,
-    email: "lisa@coastalbreeze.com",
-    winery: "Coastal Breeze Wines",
-    status: "inactive",
-    lastLogin: "2024-07-01",
-  },
-  {
-    id: 6,
-    email: "robert@heritageoak.com",
-    winery: "Heritage Oak Winery",
-    status: "active",
-    lastLogin: "2024-07-12",
+    name: "David Kim",
+    email: "david@sunsetvalley.com",
+    wineryId: 1,
+    wineryName: "Sunset Valley Winery",
+    createdAt: "2024-03-15",
   },
 ]
 
-const initialSupportMessagesData: SupportMessage[] = [
+const initialSupportMessages: SupportMessage[] = [
   {
     id: 1,
-    winery: "Sunset Valley Winery",
-    user: "sarah@sunsetvalley.com",
-    date: "2024-07-15",
-    subject: "Batch tracking issue",
-    preview: "Having trouble with batch #1042 not showing correct dates...",
+    subject: "Unable to add new batch",
     message:
-      "Having trouble with batch #1042 not showing correct dates. The racking date seems to be off by a week and it's causing confusion with our schedule. Can you please help us understand what might be causing this issue?",
+      "I'm getting an error when trying to create a new batch. The form won't submit and shows a validation error.",
+    userEmail: "sarah@sunsetvalley.com",
+    wineryName: "Sunset Valley Winery",
     status: "open",
+    createdAt: "2024-03-20",
   },
   {
     id: 2,
-    winery: "Mountain Ridge Cellars",
-    user: "emily@mountainridge.com",
-    date: "2024-07-14",
-    subject: "User access request",
-    preview: "Need to add two new staff members to our account...",
-    message:
-      "Need to add two new staff members to our account. They will be helping with batch management and need full access to create and edit batches. Their emails are john@mountainridge.com and mary@mountainridge.com.",
+    subject: "Dark mode not working",
+    message: "The dark mode toggle in settings doesn't seem to work properly. It switches but the colors don't change.",
+    userEmail: "mike@mountainview.com",
+    wineryName: "Mountain View Vineyards",
     status: "resolved",
+    createdAt: "2024-03-18",
   },
   {
     id: 3,
-    winery: "Coastal Breeze Wines",
-    user: "david@coastalbreeze.com",
-    date: "2024-07-13",
-    subject: "Export functionality",
-    preview: "Is there a way to export our batch data to CSV format?...",
-    message:
-      "Is there a way to export our batch data to CSV format? We need to provide monthly reports to our investors and having the data in spreadsheet format would be very helpful. Also, can we include customer information in the export?",
+    subject: "Question about batch timeline",
+    message: "How do I modify the timeline for a batch that's already been created? The dates seem to be locked.",
+    userEmail: "emily@coastalbreeze.com",
+    wineryName: "Coastal Breeze Winery",
     status: "open",
-  },
-  {
-    id: 4,
-    winery: "Heritage Oak Winery",
-    user: "robert@heritageoak.com",
-    date: "2024-07-12",
-    subject: "Billing question",
-    preview: "Question about our trial period and upgrade options...",
-    message:
-      "Question about our trial period and upgrade options. We're really happy with the system so far and want to upgrade to a full account. What are the pricing options and what additional features do we get with the paid plan?",
-    status: "resolved",
-  },
-  {
-    id: 5,
-    winery: "Sunset Valley Winery",
-    user: "mike@sunsetvalley.com",
-    date: "2024-07-11",
-    subject: "Mobile app feedback",
-    preview: "Love the mobile interface! Just a few suggestions...",
-    message:
-      "Love the mobile interface! Just a few suggestions for improvement: 1) It would be great to have push notifications for upcoming tasks, 2) The batch detail page could use a bit more spacing on smaller screens, 3) Maybe add a quick action button to mark tasks complete from the main list. Overall, fantastic work!",
-    status: "open",
+    createdAt: "2024-03-22",
   },
 ]
 
 export default function AdminPanel() {
-  const [wineries, setWineries] = useState<Winery[]>(initialWineriesData)
-  const [users, setUsers] = useState<User[]>(initialUsersData)
-  const [supportMessages, setSupportMessages] = useState<SupportMessage[]>(initialSupportMessagesData)
-  const [showAddWineryModal, setShowAddWineryModal] = useState(false)
-  const [selectedWinery, setSelectedWinery] = useState<Winery | null>(null)
-  const [showAddUserModal, setShowAddUserModal] = useState(false)
-  const [selectedMessage, setSelectedMessage] = useState<SupportMessage | null>(null)
-  const [showEditWineryModal, setShowEditWineryModal] = useState(false)
-  const [editingWinery, setEditingWinery] = useState<Winery | null>(null)
+  const [wineries, setWineries] = useState<Winery[]>(initialWineries)
+  const [users, setUsers] = useState<User[]>(initialUsers)
+  const [supportMessages, setSupportMessages] = useState<SupportMessage[]>(initialSupportMessages)
+  const [selectedWineryId, setSelectedWineryId] = useState<number | null>(null)
+  const [editingWineryId, setEditingWineryId] = useState<number | null>(null)
+  const [editWineryForm, setEditWineryForm] = useState({ name: "", location: "" })
 
-  // Form states
-  const [newWineryName, setNewWineryName] = useState("")
-  const [newWineryLocation, setNewWineryLocation] = useState("")
-  const [newUserEmail, setNewUserEmail] = useState("")
-  const [newUserPassword, setNewUserPassword] = useState("")
-  const [newUserWinery, setNewUserWinery] = useState("")
+  // New winery form
+  const [newWineryForm, setNewWineryForm] = useState({
+    name: "",
+    location: "",
+  })
 
-  // keep a filtered list of users for the currently-selected winery
-  const [usersForWinery, setUsersForWinery] = useState<User[]>([])
+  // New user form
+  const [newUserForm, setNewUserForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+  })
 
-  useEffect(() => {
-    if (selectedWinery) {
-      setUsersForWinery(users.filter((user) => user.winery === selectedWinery.name))
-    } else {
-      setUsersForWinery([])
+  const [showNewWineryForm, setShowNewWineryForm] = useState(false)
+  const [showNewUserForm, setShowNewUserForm] = useState(false)
+
+  const selectedWinery = wineries.find((w) => w.id === selectedWineryId)
+  const selectedWineryUsers = users.filter((u) => u.wineryId === selectedWineryId)
+
+  const handleDeleteWinery = (wineryId: number) => {
+    if (confirm("Are you sure you want to delete this winery? This will also delete all associated users.")) {
+      setWineries(wineries.filter((w) => w.id !== wineryId))
+      setUsers(users.filter((u) => u.wineryId !== wineryId))
+      if (selectedWineryId === wineryId) {
+        setSelectedWineryId(null)
+      }
     }
-  }, [selectedWinery, users])
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-700"
-      case "trial":
-        return "bg-blue-100 text-blue-700"
-      case "inactive":
-        return "bg-gray-100 text-gray-600"
-      case "open":
-        return "bg-orange-100 text-orange-700"
-      case "resolved":
-        return "bg-green-100 text-green-700"
-      default:
-        return "bg-gray-100 text-gray-600"
+  const handleDeleteUser = (userId: number) => {
+    if (confirm("Are you sure you want to delete this user?")) {
+      setUsers(users.filter((u) => u.id !== userId))
     }
   }
 
   const handleAddWinery = () => {
-    setShowAddWineryModal(true)
+    if (newWineryForm.name && newWineryForm.location) {
+      const newWinery: Winery = {
+        id: Math.max(...wineries.map((w) => w.id)) + 1,
+        name: newWineryForm.name,
+        location: newWineryForm.location,
+        accessCode: generateAccessCode(),
+        createdAt: new Date().toISOString().split("T")[0],
+      }
+      setWineries([...wineries, newWinery])
+      setNewWineryForm({ name: "", location: "" })
+      setShowNewWineryForm(false)
+    }
   }
 
   const handleAddUser = () => {
-    setShowAddUserModal(true)
+    if (newUserForm.name && newUserForm.email && newUserForm.password && selectedWineryId) {
+      const newUser: User = {
+        id: Math.max(...users.map((u) => u.id)) + 1,
+        name: newUserForm.name,
+        email: newUserForm.email,
+        wineryId: selectedWineryId,
+        wineryName: selectedWinery?.name || "",
+        createdAt: new Date().toISOString().split("T")[0],
+      }
+      setUsers([...users, newUser])
+      setNewUserForm({ name: "", email: "", password: "" })
+      setShowNewUserForm(false)
+    }
   }
 
   const handleEditWinery = (winery: Winery) => {
-    setEditingWinery(winery)
-    setNewWineryName(winery.name)
-    setNewWineryLocation(winery.location)
-    setShowEditWineryModal(true)
+    setEditingWineryId(winery.id)
+    setEditWineryForm({ name: winery.name, location: winery.location })
   }
 
-  const closeModals = () => {
-    setShowAddWineryModal(false)
-    setShowAddUserModal(false)
-    setShowEditWineryModal(false)
-    setEditingWinery(null)
-    setNewWineryName("")
-    setNewWineryLocation("")
-    setNewUserEmail("")
-    setNewUserPassword("")
-    setNewUserWinery("")
-  }
-
-  const handleWineryClick = (winery: Winery) => {
-    setSelectedWinery(winery)
-  }
-
-  const handleMessageClick = (message: SupportMessage) => {
-    setSelectedMessage(message)
-  }
-
-  const closeMessageDetail = () => {
-    setSelectedMessage(null)
-  }
-
-  const handleCreateWinery = () => {
-    if (!newWineryName.trim() || !newWineryLocation.trim()) return
-
-    const newWinery: Winery = {
-      id: wineries.length + 1,
-      name: newWineryName,
-      location: newWineryLocation,
-      userCount: 0,
-      status: "active",
-      accessCode: generateAccessCode(),
+  const handleSaveWineryEdit = () => {
+    if (editingWineryId && editWineryForm.name && editWineryForm.location) {
+      setWineries(
+        wineries.map((w) =>
+          w.id === editingWineryId ? { ...w, name: editWineryForm.name, location: editWineryForm.location } : w,
+        ),
+      )
+      // Update users with new winery name
+      setUsers(users.map((u) => (u.wineryId === editingWineryId ? { ...u, wineryName: editWineryForm.name } : u)))
+      setEditingWineryId(null)
+      setEditWineryForm({ name: "", location: "" })
     }
-    setWineries([...wineries, newWinery])
-    closeModals()
   }
 
-  const handleUpdateWinery = () => {
-    if (!editingWinery || !newWineryName.trim() || !newWineryLocation.trim()) return
-
-    setWineries(
-      wineries.map((winery) =>
-        winery.id === editingWinery.id ? { ...winery, name: newWineryName, location: newWineryLocation } : winery,
-      ),
-    )
-
-    // Update users if winery name changed
-    if (editingWinery.name !== newWineryName) {
-      setUsers(users.map((user) => (user.winery === editingWinery.name ? { ...user, winery: newWineryName } : user)))
-    }
-
-    closeModals()
+  const handleCancelWineryEdit = () => {
+    setEditingWineryId(null)
+    setEditWineryForm({ name: "", location: "" })
   }
 
-  const handleCreateUser = () => {
-    if (!newUserEmail.trim() || !newUserPassword.trim() || !newUserWinery) return
-
-    const newUser: User = {
-      id: users.length + 1,
-      email: newUserEmail,
-      winery: newUserWinery,
-      status: "active",
-      lastLogin: new Date().toISOString().split("T")[0],
-    }
-    setUsers([...users, newUser])
-
-    // Update winery user count
-    setWineries(
-      wineries.map((winery) =>
-        winery.name === newUserWinery ? { ...winery, userCount: winery.userCount + 1 } : winery,
-      ),
-    )
-
-    closeModals()
-  }
-
-  const handleDeleteWinery = (wineryToDelete: Winery) => {
-    setWineries(wineries.filter((winery) => winery.id !== wineryToDelete.id))
-    setUsers(users.filter((user) => user.winery !== wineryToDelete.name))
-    setSelectedWinery(null)
-  }
-
-  const handleDeleteUser = (userToDelete: User) => {
-    setUsers(users.filter((user) => user.id !== userToDelete.id))
-
-    // Update winery user count
-    setWineries(
-      wineries.map((winery) =>
-        winery.name === userToDelete.winery ? { ...winery, userCount: Math.max(0, winery.userCount - 1) } : winery,
-      ),
+  const handleResolveSupportMessage = (messageId: number) => {
+    setSupportMessages(
+      supportMessages.map((msg) => (msg.id === messageId ? { ...msg, status: "resolved" as const } : msg)),
     )
   }
 
-  const handleResolveMessage = (messageId: number) => {
-    setSupportMessages(supportMessages.map((msg) => (msg.id === messageId ? { ...msg, status: "resolved" } : msg)))
+  const handleReopenSupportMessage = (messageId: number) => {
+    setSupportMessages(supportMessages.map((msg) => (msg.id === messageId ? { ...msg, status: "open" as const } : msg)))
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16 lg:pt-20 pb-8 px-4 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8">
-        <div>
-          <h1 className="text-3xl font-semibold text-gray-900 tracking-tight">Admin Panel</h1>
-          <p className="text-gray-600 mt-2">Manage wineries, users, and support requests</p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Admin Panel</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Manage wineries, users, and support messages</p>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Winery Management */}
-          <section className="lg:col-span-1">
-            <Card className="bg-white shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">Winery Management</h2>
-                    <p className="text-sm text-gray-600 mt-1">{wineries.length} wineries</p>
-                  </div>
-                  <Button onClick={handleAddWinery} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Winery
-                  </Button>
-                </div>
-              </div>
-
-              <div className="divide-y divide-gray-200">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                Winery Management
+              </CardTitle>
+              <Button onClick={() => setShowNewWineryForm(true)} size="sm" className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Add Winery
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
                 {wineries.map((winery) => (
                   <div
                     key={winery.id}
-                    className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                    onClick={() => handleWineryClick(winery)}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      selectedWineryId === winery.id
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                    onClick={() => setSelectedWineryId(winery.id)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <h3 className="font-medium text-gray-900">{winery.name}</h3>
-                          <span
-                            className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(winery.status)}`}
+                    {editingWineryId === winery.id ? (
+                      <div className="space-y-3">
+                        <Input
+                          value={editWineryForm.name}
+                          onChange={(e) => setEditWineryForm({ ...editWineryForm, name: e.target.value })}
+                          placeholder="Winery name"
+                        />
+                        <Input
+                          value={editWineryForm.location}
+                          onChange={(e) => setEditWineryForm({ ...editWineryForm, location: e.target.value })}
+                          placeholder="Location"
+                        />
+                        <div className="flex gap-2">
+                          <Button onClick={handleSaveWineryEdit} size="sm" className="flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            Save
+                          </Button>
+                          <Button
+                            onClick={handleCancelWineryEdit}
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-1 bg-transparent"
                           >
-                            {winery.status}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1">{winery.location}</p>
-                        <div className="flex items-center gap-6 mt-2">
-                          <div className="flex items-center gap-1 text-sm text-gray-600">
-                            <Users className="w-4 h-4" />
-                            <span>{winery.userCount} users</span>
-                          </div>
+                            <X className="w-3 h-3" />
+                            Cancel
+                          </Button>
                         </div>
                       </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                    </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium text-gray-900 dark:text-gray-100">{winery.name}</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{winery.location}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                            Access Code: <span className="font-mono font-medium">{winery.accessCode}</span>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEditWinery(winery)
+                            }}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteWinery(winery.id)
+                            }}
+                            variant="destructive"
+                            size="sm"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-            </Card>
-          </section>
 
-          {/* User Management / Winery Details */}
-          <section className="lg:col-span-2">
-            {selectedWinery ? (
-              <Card className="bg-white shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-5 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
+              {/* New Winery Form */}
+              {showNewWineryForm && (
+                <div className="mt-4 p-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Add New Winery</h4>
+                  <div className="space-y-3">
                     <div>
-                      <h2 className="text-xl font-semibold text-gray-900">{selectedWinery.name}</h2>
-                      <p className="text-sm text-gray-600 mt-1">Location: {selectedWinery.location}</p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Access Code: <span className="font-mono font-semibold">{selectedWinery.accessCode}</span>
-                      </p>
+                      <Label htmlFor="wineryName">Winery Name</Label>
+                      <Input
+                        id="wineryName"
+                        value={newWineryForm.name}
+                        onChange={(e) => setNewWineryForm({ ...newWineryForm, name: e.target.value })}
+                        placeholder="Enter winery name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="wineryLocation">Location</Label>
+                      <Input
+                        id="wineryLocation"
+                        value={newWineryForm.location}
+                        onChange={(e) => setNewWineryForm({ ...newWineryForm, location: e.target.value })}
+                        placeholder="Enter location"
+                      />
                     </div>
                     <div className="flex gap-2">
-                      <Button onClick={() => handleEditWinery(selectedWinery)} variant="outline">
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit
+                      <Button onClick={handleAddWinery} size="sm">
+                        Create Winery
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive">
-                            <Trash className="w-4 h-4 mr-2" />
-                            Delete Winery
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the winery and all associated
-                              data.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteWinery(selectedWinery)}>
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <Button
+                        onClick={() => {
+                          setShowNewWineryForm(false)
+                          setNewWineryForm({ name: "", location: "" })
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Cancel
+                      </Button>
                     </div>
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
 
-                <div className="px-6 py-5 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">User Management</h3>
-                      <p className="text-sm text-gray-600 mt-1">{usersForWinery.length} users</p>
-                    </div>
-                    <Button onClick={handleAddUser} className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add User
-                    </Button>
-                  </div>
+          {/* User Management */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                User Management
+                {selectedWinery && (
+                  <Badge variant="secondary" className="ml-2">
+                    {selectedWinery.name}
+                  </Badge>
+                )}
+              </CardTitle>
+              {selectedWineryId && (
+                <Button onClick={() => setShowNewUserForm(true)} size="sm" className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add User
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {!selectedWineryId ? (
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">Select a winery to manage its users</p>
                 </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedWineryUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+                    >
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100">{user.name}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
+                          Joined: {new Date(user.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Button onClick={() => handleDeleteUser(user.id)} variant="destructive" size="sm">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
 
-                <div className="divide-y divide-gray-200">
-                  {usersForWinery.map((user) => (
-                    <div key={user.id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Mail className="w-4 h-4 text-gray-400" />
-                          <span className="font-medium text-gray-900">{user.email}</span>
+                  {selectedWineryUsers.length === 0 && (
+                    <div className="text-center py-4">
+                      <p className="text-gray-500 dark:text-gray-400">No users in this winery</p>
+                    </div>
+                  )}
+
+                  {/* New User Form */}
+                  {showNewUserForm && (
+                    <div className="mt-4 p-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Add New User</h4>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="userName">Name</Label>
+                          <Input
+                            id="userName"
+                            value={newUserForm.name}
+                            onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                            placeholder="Enter user name"
+                          />
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <span
-                              className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(user.status)}`}
-                            >
-                              {user.status}
-                            </span>
-                            <p className="text-xs text-gray-500 mt-1">Last: {formatDate(user.lastLogin)}</p>
-                          </div>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="sm">
-                                <Trash className="w-4 h-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the user.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteUser(user)}>Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                        <div>
+                          <Label htmlFor="userEmail">Email</Label>
+                          <Input
+                            id="userEmail"
+                            type="email"
+                            value={newUserForm.email}
+                            onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                            placeholder="Enter email address"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="userPassword">Password</Label>
+                          <Input
+                            id="userPassword"
+                            type="password"
+                            value={newUserForm.password}
+                            onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                            placeholder="Enter password"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button onClick={handleAddUser} size="sm">
+                            Create User
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setShowNewUserForm(false)
+                              setNewUserForm({ name: "", email: "", password: "" })
+                            }}
+                            variant="outline"
+                            size="sm"
+                          >
+                            Cancel
+                          </Button>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </Card>
-            ) : (
-              <Card className="bg-white shadow-sm border border-gray-200">
-                <div className="px-6 py-5">
-                  <h2 className="text-xl font-semibold text-gray-900">Select a Winery</h2>
-                  <p className="text-sm text-gray-600 mt-1">Click on a winery to manage users and view details.</p>
-                </div>
-              </Card>
-            )}
-          </section>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Support Messages */}
-        <section>
-          <Card className="bg-white shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-200">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">Support Messages</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {supportMessages.filter((msg) => msg.status === "open").length} open messages
-                </p>
-              </div>
-            </div>
-
-            <div className="divide-y divide-gray-200">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              Support Messages
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
               {supportMessages.map((message) => (
                 <div
                   key={message.id}
-                  className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                  onClick={() => handleMessageClick(message)}
+                  className={`p-4 border rounded-lg ${
+                    message.status === "open"
+                      ? "border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/20"
+                      : "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20"
+                  }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                        <span className="font-medium text-gray-900 truncate">{message.subject}</span>
-                        <span
-                          className={`text-xs font-medium px-2 py-1 rounded-full flex-shrink-0 ${getStatusColor(message.status)}`}
-                        >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                          {message.subject || "No Subject"}
+                        </h4>
+                        <Badge variant={message.status === "open" ? "destructive" : "default"} className="text-xs">
                           {message.status}
-                        </span>
+                        </Badge>
                       </div>
-                      <div className="ml-7 space-y-1">
-                        <p className="text-sm text-gray-600 truncate">{message.preview}</p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>{message.winery}</span>
-                          <span>•</span>
-                          <span>{message.user}</span>
-                          <span>•</span>
-                          <span>{formatDate(message.date)}</span>
-                        </div>
-                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        From: {message.userEmail} ({message.wineryName})
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-500">
+                        {new Date(message.createdAt).toLocaleDateString()}
+                      </p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 ml-4" />
+                    <div className="flex gap-2">
+                      {message.status === "open" ? (
+                        <Button onClick={() => handleResolveSupportMessage(message.id)} size="sm" variant="default">
+                          Mark Resolved
+                        </Button>
+                      ) : (
+                        <Button onClick={() => handleReopenSupportMessage(message.id)} size="sm" variant="outline">
+                          Reopen
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 p-3 rounded border">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">{message.message}</p>
                   </div>
                 </div>
               ))}
-            </div>
-          </Card>
-        </section>
-      </div>
 
-      {/* Add Winery Modal */}
-      {showAddWineryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Add New Winery</h3>
-              <button onClick={closeModals} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Winery Name</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter winery name"
-                  value={newWineryName}
-                  onChange={(e) => setNewWineryName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter location"
-                  value={newWineryLocation}
-                  onChange={(e) => setNewWineryLocation(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={closeModals}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateWinery}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                Add Winery
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Winery Modal */}
-      {showEditWineryModal && editingWinery && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Edit Winery</h3>
-              <button onClick={closeModals} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Winery Name</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter winery name"
-                  value={newWineryName}
-                  onChange={(e) => setNewWineryName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter location"
-                  value={newWineryLocation}
-                  onChange={(e) => setNewWineryLocation(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={closeModals}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdateWinery}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                Update Winery
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add User Modal */}
-      {showAddUserModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Add New User</h3>
-              <button onClick={closeModals} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <input
-                  type="email"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter user email"
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                <input
-                  type="password"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter password"
-                  value={newUserPassword}
-                  onChange={(e) => setNewUserPassword(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Winery</label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={newUserWinery}
-                  onChange={(e) => setNewUserWinery(e.target.value)}
-                >
-                  <option value="">Select a winery</option>
-                  {wineries.map((winery) => (
-                    <option key={winery.id} value={winery.name}>
-                      {winery.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={closeModals}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateUser}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                Add User
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Support Message Detail Modal */}
-      {selectedMessage && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">{selectedMessage.subject}</h3>
-                <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                  <span>{selectedMessage.winery}</span>
-                  <span>•</span>
-                  <span>{selectedMessage.user}</span>
-                  <span>•</span>
-                  <span>{formatDate(selectedMessage.date)}</span>
-                  <span
-                    className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(selectedMessage.status)}`}
-                  >
-                    {selectedMessage.status}
-                  </span>
+              {supportMessages.length === 0 && (
+                <div className="text-center py-8">
+                  <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">No support messages</p>
                 </div>
-              </div>
-              <button onClick={closeMessageDetail} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="border-t border-gray-200 pt-4">
-              <p className="text-gray-900 leading-relaxed">{selectedMessage.message}</p>
-            </div>
-            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
-              <button
-                onClick={closeMessageDetail}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                Close
-              </button>
-              {selectedMessage.status === "open" && (
-                <button
-                  onClick={() => handleResolveMessage(selectedMessage.id)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                >
-                  Mark as Resolved
-                </button>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
