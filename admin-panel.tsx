@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Users, Wine, Mail, ChevronRight, X, Trash } from "lucide-react"
+import { Plus, Users, Mail, ChevronRight, X, Trash, Edit, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { generateAccessCode } from "./utils/access-code"
@@ -24,7 +24,6 @@ const initialWineriesData: Winery[] = [
     id: 1,
     name: "Sunset Valley Winery",
     userCount: 8,
-    batchCount: 156,
     location: "Napa Valley, CA",
     status: "active",
     accessCode: generateAccessCode(),
@@ -33,7 +32,6 @@ const initialWineriesData: Winery[] = [
     id: 2,
     name: "Mountain Ridge Cellars",
     userCount: 5,
-    batchCount: 89,
     location: "Sonoma, CA",
     status: "active",
     accessCode: generateAccessCode(),
@@ -42,7 +40,6 @@ const initialWineriesData: Winery[] = [
     id: 3,
     name: "Coastal Breeze Wines",
     userCount: 12,
-    batchCount: 234,
     location: "Monterey, CA",
     status: "active",
     accessCode: generateAccessCode(),
@@ -51,7 +48,6 @@ const initialWineriesData: Winery[] = [
     id: 4,
     name: "Heritage Oak Winery",
     userCount: 3,
-    batchCount: 45,
     location: "Paso Robles, CA",
     status: "trial",
     accessCode: generateAccessCode(),
@@ -164,13 +160,20 @@ const initialSupportMessagesData: SupportMessage[] = [
 export default function AdminPanel() {
   const [wineries, setWineries] = useState<Winery[]>(initialWineriesData)
   const [users, setUsers] = useState<User[]>(initialUsersData)
-  const [supportMessages] = useState<SupportMessage[]>(initialSupportMessagesData)
+  const [supportMessages, setSupportMessages] = useState<SupportMessage[]>(initialSupportMessagesData)
   const [showAddWineryModal, setShowAddWineryModal] = useState(false)
   const [selectedWinery, setSelectedWinery] = useState<Winery | null>(null)
   const [showAddUserModal, setShowAddUserModal] = useState(false)
   const [selectedMessage, setSelectedMessage] = useState<SupportMessage | null>(null)
+  const [showEditWineryModal, setShowEditWineryModal] = useState(false)
+  const [editingWinery, setEditingWinery] = useState<Winery | null>(null)
+
+  // Form states
   const [newWineryName, setNewWineryName] = useState("")
   const [newWineryLocation, setNewWineryLocation] = useState("")
+  const [newUserEmail, setNewUserEmail] = useState("")
+  const [newUserPassword, setNewUserPassword] = useState("")
+  const [newUserWinery, setNewUserWinery] = useState("")
 
   // keep a filtered list of users for the currently-selected winery
   const [usersForWinery, setUsersForWinery] = useState<User[]>([])
@@ -216,9 +219,23 @@ export default function AdminPanel() {
     setShowAddUserModal(true)
   }
 
+  const handleEditWinery = (winery: Winery) => {
+    setEditingWinery(winery)
+    setNewWineryName(winery.name)
+    setNewWineryLocation(winery.location)
+    setShowEditWineryModal(true)
+  }
+
   const closeModals = () => {
     setShowAddWineryModal(false)
     setShowAddUserModal(false)
+    setShowEditWineryModal(false)
+    setEditingWinery(null)
+    setNewWineryName("")
+    setNewWineryLocation("")
+    setNewUserEmail("")
+    setNewUserPassword("")
+    setNewUserWinery("")
   }
 
   const handleWineryClick = (winery: Winery) => {
@@ -234,18 +251,56 @@ export default function AdminPanel() {
   }
 
   const handleCreateWinery = () => {
+    if (!newWineryName.trim() || !newWineryLocation.trim()) return
+
     const newWinery: Winery = {
       id: wineries.length + 1,
       name: newWineryName,
       location: newWineryLocation,
       userCount: 0,
-      batchCount: 0,
       status: "active",
       accessCode: generateAccessCode(),
     }
     setWineries([...wineries, newWinery])
-    setNewWineryName("")
-    setNewWineryLocation("")
+    closeModals()
+  }
+
+  const handleUpdateWinery = () => {
+    if (!editingWinery || !newWineryName.trim() || !newWineryLocation.trim()) return
+
+    setWineries(
+      wineries.map((winery) =>
+        winery.id === editingWinery.id ? { ...winery, name: newWineryName, location: newWineryLocation } : winery,
+      ),
+    )
+
+    // Update users if winery name changed
+    if (editingWinery.name !== newWineryName) {
+      setUsers(users.map((user) => (user.winery === editingWinery.name ? { ...user, winery: newWineryName } : user)))
+    }
+
+    closeModals()
+  }
+
+  const handleCreateUser = () => {
+    if (!newUserEmail.trim() || !newUserPassword.trim() || !newUserWinery) return
+
+    const newUser: User = {
+      id: users.length + 1,
+      email: newUserEmail,
+      winery: newUserWinery,
+      status: "active",
+      lastLogin: new Date().toISOString().split("T")[0],
+    }
+    setUsers([...users, newUser])
+
+    // Update winery user count
+    setWineries(
+      wineries.map((winery) =>
+        winery.name === newUserWinery ? { ...winery, userCount: winery.userCount + 1 } : winery,
+      ),
+    )
+
     closeModals()
   }
 
@@ -257,6 +312,17 @@ export default function AdminPanel() {
 
   const handleDeleteUser = (userToDelete: User) => {
     setUsers(users.filter((user) => user.id !== userToDelete.id))
+
+    // Update winery user count
+    setWineries(
+      wineries.map((winery) =>
+        winery.name === userToDelete.winery ? { ...winery, userCount: Math.max(0, winery.userCount - 1) } : winery,
+      ),
+    )
+  }
+
+  const handleResolveMessage = (messageId: number) => {
+    setSupportMessages(supportMessages.map((msg) => (msg.id === messageId ? { ...msg, status: "resolved" } : msg)))
   }
 
   return (
@@ -270,152 +336,215 @@ export default function AdminPanel() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Winery Management */}
-        <section className="lg:col-span-1">
-          <Card className="bg-white shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Winery Management</h2>
-                  <p className="text-sm text-gray-600 mt-1">{wineries.length} wineries</p>
-                </div>
-                <Button onClick={handleAddWinery} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Winery
-                </Button>
-              </div>
-            </div>
-
-            <div className="divide-y divide-gray-200">
-              {wineries.map((winery) => (
-                <div
-                  key={winery.id}
-                  className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                  onClick={() => handleWineryClick(winery)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-medium text-gray-900">{winery.name}</h3>
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(winery.status)}`}>
-                          {winery.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">{winery.location}</p>
-                      <div className="flex items-center gap-6 mt-2">
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Users className="w-4 h-4" />
-                          <span>{winery.userCount} users</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Wine className="w-4 h-4" />
-                          <span>{winery.batchCount} batches</span>
-                        </div>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </section>
-
-        {/* User Management / Winery Details */}
-        <section className="lg:col-span-2">
-          {selectedWinery ? (
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Winery Management */}
+          <section className="lg:col-span-1">
             <Card className="bg-white shadow-sm border border-gray-200 overflow-hidden">
               <div className="px-6 py-5 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-900">{selectedWinery.name}</h2>
-                    <p className="text-sm text-gray-600 mt-1">Location: {selectedWinery.location}</p>
-                    <p className="text-sm text-gray-600 mt-1">Access Code: {selectedWinery.accessCode}</p>
+                    <h2 className="text-xl font-semibold text-gray-900">Winery Management</h2>
+                    <p className="text-sm text-gray-600 mt-1">{wineries.length} wineries</p>
                   </div>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive">
-                        <Trash className="w-4 h-4 mr-2" />
-                        Delete Winery
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete the winery and all associated data.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteWinery(selectedWinery)}>Delete</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
-
-              <div className="px-6 py-5 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">User Management</h2>
-                    <p className="text-sm text-gray-600 mt-1">{usersForWinery.length} users</p>
-                  </div>
-                  <Button onClick={handleAddUser} className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
+                  <Button onClick={handleAddWinery} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
                     <Plus className="w-4 h-4 mr-2" />
-                    Add User
+                    Add Winery
                   </Button>
                 </div>
               </div>
 
               <div className="divide-y divide-gray-200">
-                {usersForWinery.map((user) => (
-                  <div key={user.id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150">
+                {wineries.map((winery) => (
+                  <div
+                    key={winery.id}
+                    className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                    onClick={() => handleWineryClick(winery)}
+                  >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Mail className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium text-gray-900">{user.email}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-medium text-gray-900">{winery.name}</h3>
+                          <span
+                            className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(winery.status)}`}
+                          >
+                            {winery.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">{winery.location}</p>
+                        <div className="flex items-center gap-6 mt-2">
+                          <div className="flex items-center gap-1 text-sm text-gray-600">
+                            <Users className="w-4 h-4" />
+                            <span>{winery.userCount} users</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(user.status)}`}>
-                          {user.status}
-                        </span>
-                        <p className="text-xs text-gray-500 mt-1">Last: {formatDate(user.lastLogin)}</p>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm">
-                              <Trash className="w-4 h-4 mr-2" />
-                              Delete User
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the user.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteUser(user)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+                      <ChevronRight className="w-5 h-5 text-gray-400" />
                     </div>
                   </div>
                 ))}
               </div>
             </Card>
-          ) : (
-            <Card className="bg-white shadow-sm border border-gray-200">
-              <div className="px-6 py-5">
-                <h2 className="text-xl font-semibold text-gray-900">Select a Winery</h2>
-                <p className="text-sm text-gray-600 mt-1">Click on a winery to manage users and view details.</p>
+          </section>
+
+          {/* User Management / Winery Details */}
+          <section className="lg:col-span-2">
+            {selectedWinery ? (
+              <Card className="bg-white shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-5 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900">{selectedWinery.name}</h2>
+                      <p className="text-sm text-gray-600 mt-1">Location: {selectedWinery.location}</p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Access Code: <span className="font-mono font-semibold">{selectedWinery.accessCode}</span>
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={() => handleEditWinery(selectedWinery)} variant="outline">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive">
+                            <Trash className="w-4 h-4 mr-2" />
+                            Delete Winery
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the winery and all associated
+                              data.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteWinery(selectedWinery)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-5 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">User Management</h3>
+                      <p className="text-sm text-gray-600 mt-1">{usersForWinery.length} users</p>
+                    </div>
+                    <Button onClick={handleAddUser} className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add User
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="divide-y divide-gray-200">
+                  {usersForWinery.map((user) => (
+                    <div key={user.id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Mail className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium text-gray-900">{user.email}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <span
+                              className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(user.status)}`}
+                            >
+                              {user.status}
+                            </span>
+                            <p className="text-xs text-gray-500 mt-1">Last: {formatDate(user.lastLogin)}</p>
+                          </div>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm">
+                                <Trash className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the user.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteUser(user)}>Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ) : (
+              <Card className="bg-white shadow-sm border border-gray-200">
+                <div className="px-6 py-5">
+                  <h2 className="text-xl font-semibold text-gray-900">Select a Winery</h2>
+                  <p className="text-sm text-gray-600 mt-1">Click on a winery to manage users and view details.</p>
+                </div>
+              </Card>
+            )}
+          </section>
+        </div>
+
+        {/* Support Messages */}
+        <section>
+          <Card className="bg-white shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-200">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Support Messages</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {supportMessages.filter((msg) => msg.status === "open").length} open messages
+                </p>
               </div>
-            </Card>
-          )}
+            </div>
+
+            <div className="divide-y divide-gray-200">
+              {supportMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                  onClick={() => handleMessageClick(message)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className="font-medium text-gray-900 truncate">{message.subject}</span>
+                        <span
+                          className={`text-xs font-medium px-2 py-1 rounded-full flex-shrink-0 ${getStatusColor(message.status)}`}
+                        >
+                          {message.status}
+                        </span>
+                      </div>
+                      <div className="ml-7 space-y-1">
+                        <p className="text-sm text-gray-600 truncate">{message.preview}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>{message.winery}</span>
+                          <span>•</span>
+                          <span>{message.user}</span>
+                          <span>•</span>
+                          <span>{formatDate(message.date)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 ml-4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
         </section>
       </div>
 
@@ -469,6 +598,56 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {/* Edit Winery Modal */}
+      {showEditWineryModal && editingWinery && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Edit Winery</h3>
+              <button onClick={closeModals} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Winery Name</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter winery name"
+                  value={newWineryName}
+                  onChange={(e) => setNewWineryName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter location"
+                  value={newWineryLocation}
+                  onChange={(e) => setNewWineryLocation(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={closeModals}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateWinery}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+              >
+                Update Winery
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add User Modal */}
       {showAddUserModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -486,11 +665,28 @@ export default function AdminPanel() {
                   type="email"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter user email"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                <input
+                  type="password"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter password"
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Winery</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={newUserWinery}
+                  onChange={(e) => setNewUserWinery(e.target.value)}
+                >
+                  <option value="">Select a winery</option>
                   {wineries.map((winery) => (
                     <option key={winery.id} value={winery.name}>
                       {winery.name}
@@ -507,7 +703,7 @@ export default function AdminPanel() {
                 Cancel
               </button>
               <button
-                onClick={closeModals}
+                onClick={handleCreateUser}
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
               >
                 Add User
@@ -551,9 +747,14 @@ export default function AdminPanel() {
               >
                 Close
               </button>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                Mark as Resolved
-              </button>
+              {selectedMessage.status === "open" && (
+                <button
+                  onClick={() => handleResolveMessage(selectedMessage.id)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                >
+                  Mark as Resolved
+                </button>
+              )}
             </div>
           </div>
         </div>

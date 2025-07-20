@@ -3,7 +3,6 @@ export interface Winery {
   name: string
   location: string
   userCount: number
-  batchCount: number
   status: "active" | "trial" | "inactive"
   accessCode: string
 }
