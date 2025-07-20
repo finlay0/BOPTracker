@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation"
 import { ToastContainer, useToast } from "./components/toast"
 import { PasswordChangeModal } from "./components/password-change-modal"
 import BatchDetail from "./batch-detail"
+//import SettingsView from "./settings-view" // Removed duplicate import
 
 // Sample data for today's tasks
 const tasksData = [
@@ -727,6 +728,7 @@ function NewBatchView() {
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
+      year: "numeric",
     })
   }
 
@@ -1033,30 +1035,16 @@ function NewBatchView() {
             </div>
           </div>
         )}
-
-        {/* Sticky Save Button */}
-        <div className="fixed bottom-20 left-4 right-4 z-10 sm:relative sm:bottom-auto sm:left-auto sm:right-auto sm:z-auto">
-          <button
-            onClick={handleSave}
-            disabled={isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-blue-400 dark:disabled:bg-blue-600 text-white font-medium py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Saving Batch...</span>
-              </div>
-            ) : (
-              "Save Batch"
-            )}
-          </button>
-        </div>
       </div>
     </div>
   )
 }
 
-function SettingsView() {
+interface SettingsViewProps {
+  wineryAccessCode: string
+}
+
+function SettingsView({ wineryAccessCode }: SettingsViewProps) {
   const [userEmail] = useState("sarah@sunsetvalley.com")
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -1203,7 +1191,7 @@ function SettingsView() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Current Email</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{userEmail}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{userEmail}</p>
                   </div>
                   <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
                     <svg
@@ -1239,18 +1227,14 @@ function SettingsView() {
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
-                      placeholder="Enter new email address"
-                      disabled={isEmailChangeLoading}
+                      placeholder="Enter new email"
                     />
-                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                      You'll receive a confirmation email to finalize the change.
-                    </p>
                   </div>
 
                   <button
                     onClick={handleEmailChange}
                     disabled={isEmailChangeLoading || !newEmail.trim()}
-                    className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-blue-400 dark:disabled:bg-blue-600 text-white font-medium py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 disabled:cursor-not-allowed active:scale-[0.98]"
+                    className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-blue-400 dark:disabled:bg-blue-600 text-white font-medium py-4 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 disabled:cursor-not-allowed active:scale-[0.98]"
                   >
                     {isEmailChangeLoading ? (
                       <div className="flex items-center justify-center gap-2">
@@ -1261,6 +1245,16 @@ function SettingsView() {
                       "Send Change Link"
                     )}
                   </button>
+                </div>
+              </div>
+
+              {/* Winery Access Code */}
+              <div className="px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Winery Access Code</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{wineryAccessCode}</p>
+                  </div>
                 </div>
               </div>
 
@@ -1504,6 +1498,15 @@ function SettingsView() {
       </div>
     </>
   )
+}
+
+function generateAccessCode() {
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+  let code = ""
+  for (let i = 0; i < 6; i++) {
+    code += characters.charAt(Math.floor(Math.random() * characters.length))
+  }
+  return code
 }
 
 export default function BOPTracker() {
@@ -1939,7 +1942,7 @@ export default function BOPTracker() {
                         goToToday()
                         setShowDatePicker(false)
                       }}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-xl transition-colors duration-200"
                     >
                       Today
                     </button>
@@ -1954,11 +1957,13 @@ export default function BOPTracker() {
       case "new":
         return <NewBatchView />
       case "settings":
-        return <SettingsView />
+        return <SettingsView wineryAccessCode={wineryAccessCode} />
       default:
         return null
     }
   }
+
+  const [wineryAccessCode, setWineryAccessCode] = useState(generateAccessCode())
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
