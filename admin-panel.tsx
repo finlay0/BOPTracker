@@ -1,110 +1,39 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Plus, Edit2, Check, X, MessageSquare, Users, Building2 } from "lucide-react"
-import { generateAccessCode } from "../utils/access-code"
 import type { Winery, User, SupportMessage } from "../types/admin"
+import {
+  createWinery,
+  updateWinery,
+  deleteWinery,
+  createUser,
+  deleteUser,
+  toggleSupportMessageStatus,
+} from "../app/admin/actions"
 
-// Sample data
-const initialWineries: Winery[] = [
-  {
-    id: 1,
-    name: "Sunset Valley Winery",
-    location: "Napa Valley, CA",
-    accessCode: "ABC123",
-    createdAt: "2024-01-15",
-  },
-  {
-    id: 2,
-    name: "Mountain View Vineyards",
-    location: "Sonoma County, CA",
-    accessCode: "DEF456",
-    createdAt: "2024-02-20",
-  },
-  {
-    id: 3,
-    name: "Coastal Breeze Winery",
-    location: "Monterey, CA",
-    accessCode: "GHI789",
-    createdAt: "2024-03-10",
-  },
-]
+interface AdminPanelProps {
+  initialWineries: Winery[]
+  initialUsers: User[]
+  initialSupportMessages: SupportMessage[]
+}
 
-const initialUsers: User[] = [
-  {
-    id: 1,
-    name: "Sarah Johnson",
-    email: "sarah@sunsetvalley.com",
-    wineryId: 1,
-    wineryName: "Sunset Valley Winery",
-    createdAt: "2024-01-16",
-  },
-  {
-    id: 2,
-    name: "Mike Chen",
-    email: "mike@mountainview.com",
-    wineryId: 2,
-    wineryName: "Mountain View Vineyards",
-    createdAt: "2024-02-21",
-  },
-  {
-    id: 3,
-    name: "Emily Rodriguez",
-    email: "emily@coastalbreeze.com",
-    wineryId: 3,
-    wineryName: "Coastal Breeze Winery",
-    createdAt: "2024-03-11",
-  },
-  {
-    id: 4,
-    name: "David Kim",
-    email: "david@sunsetvalley.com",
-    wineryId: 1,
-    wineryName: "Sunset Valley Winery",
-    createdAt: "2024-03-15",
-  },
-]
+export default function AdminPanel({ initialWineries, initialUsers, initialSupportMessages }: AdminPanelProps) {
+  const [isPending, startTransition] = useTransition()
 
-const initialSupportMessages: SupportMessage[] = [
-  {
-    id: 1,
-    subject: "Unable to add new batch",
-    message:
-      "I'm getting an error when trying to create a new batch. The form won't submit and shows a validation error.",
-    userEmail: "sarah@sunsetvalley.com",
-    wineryName: "Sunset Valley Winery",
-    status: "open",
-    createdAt: "2024-03-20",
-  },
-  {
-    id: 2,
-    subject: "Dark mode not working",
-    message: "The dark mode toggle in settings doesn't seem to work properly. It switches but the colors don't change.",
-    userEmail: "mike@mountainview.com",
-    wineryName: "Mountain View Vineyards",
-    status: "resolved",
-    createdAt: "2024-03-18",
-  },
-  {
-    id: 3,
-    subject: "Question about batch timeline",
-    message: "How do I modify the timeline for a batch that's already been created? The dates seem to be locked.",
-    userEmail: "emily@coastalbreeze.com",
-    wineryName: "Coastal Breeze Winery",
-    status: "open",
-    createdAt: "2024-03-22",
-  },
-]
+  // State is now controlled by data passed via props, but we can keep local copies for optimistic updates if needed.
+  // For simplicity, we'll rely on revalidation from server actions.
+  const wineries = initialWineries
+  const users = initialUsers
+  const supportMessages = initialSupportMessages
 
-export default function AdminPanel() {
-  const [wineries, setWineries] = useState<Winery[]>(initialWineries)
-  const [users, setUsers] = useState<User[]>(initialUsers)
-  const [supportMessages, setSupportMessages] = useState<SupportMessage[]>(initialSupportMessages)
   const [selectedWineryId, setSelectedWineryId] = useState<number | null>(null)
   const [editingWineryId, setEditingWineryId] = useState<number | null>(null)
   const [editWineryForm, setEditWineryForm] = useState({ name: "", location: "" })
@@ -130,49 +59,43 @@ export default function AdminPanel() {
 
   const handleDeleteWinery = (wineryId: number) => {
     if (confirm("Are you sure you want to delete this winery? This will also delete all associated users.")) {
-      setWineries(wineries.filter((w) => w.id !== wineryId))
-      setUsers(users.filter((u) => u.wineryId !== wineryId))
-      if (selectedWineryId === wineryId) {
-        setSelectedWineryId(null)
-      }
+      startTransition(() => {
+        deleteWinery(wineryId)
+      })
     }
   }
 
-  const handleDeleteUser = (userId: number) => {
+  const handleDeleteUser = (userId: string) => {
     if (confirm("Are you sure you want to delete this user?")) {
-      setUsers(users.filter((u) => u.id !== userId))
+      startTransition(() => {
+        deleteUser(userId)
+      })
     }
   }
 
-  const handleAddWinery = () => {
-    if (newWineryForm.name && newWineryForm.location) {
-      const newWinery: Winery = {
-        id: Math.max(...wineries.map((w) => w.id)) + 1,
-        name: newWineryForm.name,
-        location: newWineryForm.location,
-        accessCode: generateAccessCode(),
-        createdAt: new Date().toISOString().split("T")[0],
-      }
-      setWineries([...wineries, newWinery])
-      setNewWineryForm({ name: "", location: "" })
-      setShowNewWineryForm(false)
-    }
+  const handleAddWinery = (e: React.FormEvent) => {
+    e.preventDefault()
+    const formData = new FormData(e.target as HTMLFormElement)
+    startTransition(() => {
+      createWinery(formData).then(() => {
+        setNewWineryForm({ name: "", location: "" })
+        setShowNewWineryForm(false)
+      })
+    })
   }
 
-  const handleAddUser = () => {
-    if (newUserForm.name && newUserForm.email && newUserForm.password && selectedWineryId) {
-      const newUser: User = {
-        id: Math.max(...users.map((u) => u.id)) + 1,
-        name: newUserForm.name,
-        email: newUserForm.email,
-        wineryId: selectedWineryId,
-        wineryName: selectedWinery?.name || "",
-        createdAt: new Date().toISOString().split("T")[0],
-      }
-      setUsers([...users, newUser])
-      setNewUserForm({ name: "", email: "", password: "" })
-      setShowNewUserForm(false)
-    }
+  const handleAddUser = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedWineryId) return
+    const formData = new FormData(e.target as HTMLFormElement)
+    formData.append("wineryId", selectedWineryId.toString())
+
+    startTransition(() => {
+      createUser(formData).then(() => {
+        setNewUserForm({ name: "", email: "", password: "" })
+        setShowNewUserForm(false)
+      })
+    })
   }
 
   const handleEditWinery = (winery: Winery) => {
@@ -180,18 +103,16 @@ export default function AdminPanel() {
     setEditWineryForm({ name: winery.name, location: winery.location })
   }
 
-  const handleSaveWineryEdit = () => {
-    if (editingWineryId && editWineryForm.name && editWineryForm.location) {
-      setWineries(
-        wineries.map((w) =>
-          w.id === editingWineryId ? { ...w, name: editWineryForm.name, location: editWineryForm.location } : w,
-        ),
-      )
-      // Update users with new winery name
-      setUsers(users.map((u) => (u.wineryId === editingWineryId ? { ...u, wineryName: editWineryForm.name } : u)))
-      setEditingWineryId(null)
-      setEditWineryForm({ name: "", location: "" })
-    }
+  const handleSaveWineryEdit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingWineryId) return
+    const formData = new FormData(e.target as HTMLFormElement)
+    startTransition(() => {
+      updateWinery(editingWineryId, formData).then(() => {
+        setEditingWineryId(null)
+        setEditWineryForm({ name: "", location: "" })
+      })
+    })
   }
 
   const handleCancelWineryEdit = () => {
@@ -199,15 +120,22 @@ export default function AdminPanel() {
     setEditWineryForm({ name: "", location: "" })
   }
 
-  const handleResolveSupportMessage = (messageId: number) => {
-    setSupportMessages(
-      supportMessages.map((msg) => (msg.id === messageId ? { ...msg, status: "resolved" as const } : msg)),
-    )
+  const handleToggleSupportMessage = (messageId: number, status: "open" | "resolved") => {
+    startTransition(() => {
+      toggleSupportMessageStatus(messageId, status)
+    })
   }
 
-  const handleReopenSupportMessage = (messageId: number) => {
-    setSupportMessages(supportMessages.map((msg) => (msg.id === messageId ? { ...msg, status: "open" as const } : msg)))
-  }
+  // The rest of the JSX remains largely the same, but form submissions
+  // will now use the server action handlers.
+  // For example, the "Add New Winery" form:
+  /*
+    <form onSubmit={handleAddWinery}>
+      <Input name="name" ... />
+      <Input name="location" ... />
+      <Button type="submit">Create</Button>
+    </form>
+  */
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
@@ -243,19 +171,11 @@ export default function AdminPanel() {
                     onClick={() => setSelectedWineryId(winery.id)}
                   >
                     {editingWineryId === winery.id ? (
-                      <div className="space-y-3">
-                        <Input
-                          value={editWineryForm.name}
-                          onChange={(e) => setEditWineryForm({ ...editWineryForm, name: e.target.value })}
-                          placeholder="Winery name"
-                        />
-                        <Input
-                          value={editWineryForm.location}
-                          onChange={(e) => setEditWineryForm({ ...editWineryForm, location: e.target.value })}
-                          placeholder="Location"
-                        />
+                      <form onSubmit={handleSaveWineryEdit} className="space-y-3">
+                        <Input name="name" defaultValue={editWineryForm.name} placeholder="Winery name" />
+                        <Input name="location" defaultValue={editWineryForm.location} placeholder="Location" />
                         <div className="flex gap-2">
-                          <Button onClick={handleSaveWineryEdit} size="sm" className="flex items-center gap-1">
+                          <Button type="submit" size="sm" className="flex items-center gap-1">
                             <Check className="w-3 h-3" />
                             Save
                           </Button>
@@ -269,7 +189,7 @@ export default function AdminPanel() {
                             Cancel
                           </Button>
                         </div>
-                      </div>
+                      </form>
                     ) : (
                       <div className="flex items-center justify-between">
                         <div>
@@ -311,27 +231,17 @@ export default function AdminPanel() {
               {showNewWineryForm && (
                 <div className="mt-4 p-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                   <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Add New Winery</h4>
-                  <div className="space-y-3">
+                  <form onSubmit={handleAddWinery} className="space-y-3">
                     <div>
                       <Label htmlFor="wineryName">Winery Name</Label>
-                      <Input
-                        id="wineryName"
-                        value={newWineryForm.name}
-                        onChange={(e) => setNewWineryForm({ ...newWineryForm, name: e.target.value })}
-                        placeholder="Enter winery name"
-                      />
+                      <Input id="wineryName" name="name" placeholder="Enter winery name" />
                     </div>
                     <div>
                       <Label htmlFor="wineryLocation">Location</Label>
-                      <Input
-                        id="wineryLocation"
-                        value={newWineryForm.location}
-                        onChange={(e) => setNewWineryForm({ ...newWineryForm, location: e.target.value })}
-                        placeholder="Enter location"
-                      />
+                      <Input id="wineryLocation" name="location" placeholder="Enter location" />
                     </div>
                     <div className="flex gap-2">
-                      <Button onClick={handleAddWinery} size="sm">
+                      <Button type="submit" size="sm">
                         Create Winery
                       </Button>
                       <Button
@@ -345,7 +255,7 @@ export default function AdminPanel() {
                         Cancel
                       </Button>
                     </div>
-                  </div>
+                  </form>
                 </div>
               )}
             </CardContent>
@@ -390,7 +300,7 @@ export default function AdminPanel() {
                           Joined: {new Date(user.createdAt).toLocaleDateString()}
                         </p>
                       </div>
-                      <Button onClick={() => handleDeleteUser(user.id)} variant="destructive" size="sm">
+                      <Button onClick={() => handleDeleteUser(user.id.toString())} variant="destructive" size="sm">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -406,38 +316,21 @@ export default function AdminPanel() {
                   {showNewUserForm && (
                     <div className="mt-4 p-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                       <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Add New User</h4>
-                      <div className="space-y-3">
+                      <form onSubmit={handleAddUser} className="space-y-3">
                         <div>
                           <Label htmlFor="userName">Name</Label>
-                          <Input
-                            id="userName"
-                            value={newUserForm.name}
-                            onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
-                            placeholder="Enter user name"
-                          />
+                          <Input id="userName" name="name" placeholder="Enter user name" />
                         </div>
                         <div>
                           <Label htmlFor="userEmail">Email</Label>
-                          <Input
-                            id="userEmail"
-                            type="email"
-                            value={newUserForm.email}
-                            onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                            placeholder="Enter email address"
-                          />
+                          <Input id="userEmail" type="email" name="email" placeholder="Enter email address" />
                         </div>
                         <div>
                           <Label htmlFor="userPassword">Password</Label>
-                          <Input
-                            id="userPassword"
-                            type="password"
-                            value={newUserForm.password}
-                            onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
-                            placeholder="Enter password"
-                          />
+                          <Input id="userPassword" type="password" name="password" placeholder="Enter password" />
                         </div>
                         <div className="flex gap-2">
-                          <Button onClick={handleAddUser} size="sm">
+                          <Button type="submit" size="sm">
                             Create User
                           </Button>
                           <Button
@@ -451,7 +344,7 @@ export default function AdminPanel() {
                             Cancel
                           </Button>
                         </div>
-                      </div>
+                      </form>
                     </div>
                   )}
                 </div>
@@ -498,11 +391,19 @@ export default function AdminPanel() {
                     </div>
                     <div className="flex gap-2">
                       {message.status === "open" ? (
-                        <Button onClick={() => handleResolveSupportMessage(message.id)} size="sm" variant="default">
+                        <Button
+                          onClick={() => handleToggleSupportMessage(message.id, "resolved")}
+                          size="sm"
+                          variant="default"
+                        >
                           Mark Resolved
                         </Button>
                       ) : (
-                        <Button onClick={() => handleReopenSupportMessage(message.id)} size="sm" variant="outline">
+                        <Button
+                          onClick={() => handleToggleSupportMessage(message.id, "open")}
+                          size="sm"
+                          variant="outline"
+                        >
                           Reopen
                         </Button>
                       )}

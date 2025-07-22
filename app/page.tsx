@@ -1,10 +1,37 @@
-import BOPTracker from "../bop-tracker"
-import { ThemeProvider } from "../components/theme-provider"
+import { createClient } from "@/lib/supabase/server"
+import { redirect } from "next/navigation"
+import BOPTracker from "@/bop-tracker"
 
-export default function Home() {
-  return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <BOPTracker />
-    </ThemeProvider>
-  )
+export default async function HomePage() {
+  const supabase = createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return redirect("/login")
+  }
+
+  const { data: userProfile } = await supabase
+    .from("users")
+    .select(
+      `
+      *,
+      wineries (
+        name,
+        join_code
+      )
+    `,
+    )
+    .eq("id", user.id)
+    .single()
+
+  if (!userProfile) {
+    // This might happen if the user was created in auth but the profile trigger failed.
+    // You could redirect to a page that asks them to contact support.
+    return redirect("/login?error=user_profile_not_found")
+  }
+
+  return <BOPTracker userProfile={userProfile} />
 }

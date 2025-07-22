@@ -5,13 +5,28 @@ import { useTheme } from "./components/theme-provider"
 import { useRouter } from "next/navigation"
 import { useToast } from "./components/toast"
 import { PasswordChangeModal } from "./components/password-change-modal"
+import type { User } from "../types/admin"
 
-interface SettingsViewProps {
-  wineryAccessCode: string
+interface WineryInfo {
+  name: string
+  join_code: string
 }
 
-function SettingsView({ wineryAccessCode }: SettingsViewProps) {
-  const [userEmail] = useState("sarah@sunsetvalley.com")
+interface UserProfile extends User {
+  wineries: WineryInfo | null
+}
+
+interface SettingsViewProps {
+  userProfile: UserProfile
+}
+
+function SettingsView({ userProfile }: SettingsViewProps) {
+  // Remove the old userEmail state
+  // const [userEmail] = useState("sarah@sunsetvalley.com")
+
+  // Use the prop instead
+  const userEmail = userProfile.email
+  const wineryAccessCode = userProfile.wineries?.join_code || "N/A"
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const { theme, setTheme } = useTheme()

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
 import { Check, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -12,6 +12,20 @@ import { ToastContainer, useToast } from "./components/toast"
 import { PasswordChangeModal } from "./components/password-change-modal"
 import BatchDetail from "./batch-detail"
 //import SettingsView from "./settings-view" // Removed duplicate import
+import type { User } from "@/types/admin" // You may need to adjust this path
+
+interface WineryInfo {
+  name: string
+  join_code: string
+}
+
+interface UserProfile extends User {
+  wineries: WineryInfo | null
+}
+
+interface BOPTrackerProps {
+  userProfile: UserProfile
+}
 
 // Sample data for today's tasks
 const tasksData = [
@@ -1061,10 +1075,10 @@ function NewBatchView() {
 }
 
 interface SettingsViewProps {
-  wineryAccessCode: string
+  userProfile: UserProfile
 }
 
-function SettingsView({ wineryAccessCode }: SettingsViewProps) {
+function SettingsView({ userProfile }: { userProfile: UserProfile }) {
   const [userEmail] = useState("sarah@sunsetvalley.com")
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -1273,7 +1287,7 @@ function SettingsView({ wineryAccessCode }: SettingsViewProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Winery Access Code</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{wineryAccessCode}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{userProfile.wineries?.join_code || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -1330,7 +1344,6 @@ function SettingsView({ wineryAccessCode }: SettingsViewProps) {
                 </div>
               </div>
             </div>
-          </div>
 
           {/* Support Section */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -1520,21 +1533,21 @@ function SettingsView({ wineryAccessCode }: SettingsViewProps) {
   )
 }
 
-function generateAccessCode() {
+function generateAccessCode() {\
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-  let code = ""
-  for (let i = 0; i < 6; i++) {
-    code += characters.charAt(Math.floor(Math.random() * characters.length))
+  let code = ""\
+  for (let i = 0; i < 6; i++) {\
+    code += characters.charAt(Math.floor(Math.random() * characters.length))\
   }
   return code
 }
 
-export default function BOPTracker() {
-  // Add toast hook at the top of the component
+export default function BOPTracker({ userProfile }: BOPTrackerProps) {
+  // Add toast hook at the top of the component\
   const { toasts, removeToast, showSuccess, showError } = useToast()
 
   // Add winery name state at the top of the component\
-  const [wineryName] = useState("Maple Valley") // This would come from auth context\
+  // const [wineryName] = useState("Maple Valley") // This would come from auth context\
   const [tasks, setTasks] = useState<Task[]>(tasksData)
   const [activeTab, setActiveTab] = useState("today")
   // Add state for selected date at the top of the BOPTracker component:
@@ -1545,21 +1558,21 @@ export default function BOPTracker() {
   const progressCircleRef = useRef<HTMLDivElement>(null)
 
   // Add helper functions after the state declarations:
-  const formatSelectedDate = (date: Date) => {
+  const formatSelectedDate = (date: Date) => {\
     return date.toLocaleDateString("en-US", {
-      weekday: "long",
+      weekday: \"long",
       month: "long",
       day: "numeric",
       year: "numeric",
     })
   }
 
-  const isToday = (date: Date) => {
+  const isToday = (date: Date) => {\
     const today = new Date()
     return date.toDateString() === today.toDateString()
   }
 
-  const isFuture = (date: Date) => {
+  const isFuture = (date: Date) => {\
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const compareDate = new Date(date)
@@ -1567,13 +1580,13 @@ export default function BOPTracker() {
     return compareDate > today
   }
 
-  const goToPreviousDay = () => {
+  const goToPreviousDay = () => {\
     const newDate = new Date(selectedDate)
     newDate.setDate(newDate.getDate() - 1)
     setSelectedDate(newDate)
   }
 
-  const goToNextDay = () => {
+  const goToNextDay = () => {\
     const newDate = new Date(selectedDate)
     newDate.setDate(newDate.getDate() + 1)
     setSelectedDate(newDate)
@@ -1584,7 +1597,7 @@ export default function BOPTracker() {
   }
 
   // Update toggleTaskCompletion function
-  const toggleTaskCompletion = (taskId: number) => {
+  const toggleTaskCompletion = (taskId: number) => {\
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
 
@@ -1597,7 +1610,7 @@ export default function BOPTracker() {
   }
 
   // Group tasks by type\
-  const groupedTasks = tasks.reduce((groups: { [key: string]: Task[] }, task) => {
+  const groupedTasks = tasks.reduce((groups: { [key: string]: Task[] }, task) => {\
     const group = groups[task.type] || []
     group.push(task)
     groups[task.type] = group
@@ -1607,7 +1620,7 @@ export default function BOPTracker() {
   // Get today's date formatted nicely
   const today = new Date()
   const formattedDate = today.toLocaleDateString("en-US", {
-    weekday: "long",
+    weekday: \"long",
     month: "long",
     day: "numeric",
   })
@@ -1624,8 +1637,8 @@ export default function BOPTracker() {
   }, [completedCount, totalCount, prevCompletedCount])
 
   // Get page title based on active tab
-  const getPageTitle = () => {
-    switch (activeTab) {
+  const getPageTitle = () => {\
+    switch (activeTab) {\
       case "today":
         return `${wineryName} Tasks`
       case "batches":
@@ -1640,8 +1653,8 @@ export default function BOPTracker() {
   }
 
   // Update the getPageSubtitle function to use selectedDate:
-  const getPageSubtitle = () => {
-    switch (activeTab) {
+  const getPageSubtitle = () => {\
+    switch (activeTab) {\
       case "today":
         return "BOP Tracker"
       case "batches":
@@ -1655,44 +1668,47 @@ export default function BOPTracker() {
     }
   }
 
-  function getTaskTypeHeader(taskType: string, date: Date) {
+  function getTaskTypeHeader(taskType: string, date: Date) {\
     const today = new Date()
-    const isPast = date < today
+    const isPast = date < today\
     const isFutureDate = date > today
 
-    if (isToday(date)) {
+    if (isToday(date)) {\
       return taskType // e.g. "Bottle Today"
     }
 
     const dateStr = date.toLocaleDateString("en-US", {
-      month: "long",
+      month: \"long",
       day: "numeric",
     })
 
-    if (taskType.includes("Bottle")) {
+    if (taskType.includes("Bottle")) {\
       return isPast ? `Bottled on ${dateStr}` : `Bottle on ${dateStr}`
     }
-    if (taskType.includes("Filter")) {
+    if (taskType.includes("Filter")) {\
       return isPast ? `Filtered on ${dateStr}` : `Filter on ${dateStr}`
     }
-    if (taskType.includes("Rack")) {
+    if (taskType.includes("Rack")) {\
       return isPast ? `Racked on ${dateStr}` : `Rack on ${dateStr}`
     }
-    if (taskType.includes("Put-Up")) {
+    if (taskType.includes("Put-Up")) {\
       return `Put-Up on ${dateStr}`
     }
-    if (taskType === "Overdue") {
+    if (taskType === "Overdue") {\
       return "Overdue"
     }
     return taskType
   }
 
   // Replace the entire "today" case in renderContent with:
-  const renderContent = () => {
-    switch (activeTab) {
+  const renderContent = () => {\
+    const wineryName = userProfile.wineries?.name || 'My Winery';
+    const wineryAccessCode = userProfile.wineries?.join_code || 'N/A';
+
+    switch (activeTab) {\
       case "today":
         // Filter tasks for selected date (for demo, we'll show all tasks but you'd filter by date in real app)
-        const selectedDateTasks = tasks // In real app: filter tasks by selectedDate
+        const selectedDateTasks = tasks // In real app: filter tasks by selectedDate\
         const selectedGroupedTasks = selectedDateTasks.reduce((groups: { [key: string]: Task[] }, task) => {
           const group = groups[task.type] || []
           group.push(task)
@@ -1977,13 +1993,13 @@ export default function BOPTracker() {
       case "new":
         return <NewBatchView />
       case "settings":
-        return <SettingsView wineryAccessCode={wineryAccessCode} />
+        return <SettingsView userProfile={userProfile} />
       default:
         return null
     }
   }
 
-  const [wineryAccessCode, setWineryAccessCode] = useState(generateAccessCode())
+  // const [wineryAccessCode, setWineryAccessCode] = useState(generateAccessCode())
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
