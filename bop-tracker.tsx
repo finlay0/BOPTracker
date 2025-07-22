@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Check, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -11,8 +11,7 @@ import { useRouter } from "next/navigation"
 import { ToastContainer, useToast } from "./components/toast"
 import { PasswordChangeModal } from "./components/password-change-modal"
 import BatchDetail from "./batch-detail"
-//import SettingsView from "./settings-view" // Removed duplicate import
-import type { User } from "@/types/admin" // You may need to adjust this path
+import type { User } from "@/types/admin"
 
 interface WineryInfo {
   name: string
@@ -212,45 +211,37 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null)
   const [showBatchDetail, setShowBatchDetail] = useState(false)
   const [batchesState, setBatchesState] = useState(batchesData)
-  const [showFilters, setShowFilters] = useState(false) // Add this new state
+  const [showFilters, setShowFilters] = useState(false)
 
-  // Add this function to handle batch row clicks:
   const handleBatchClick = (batchId: number) => {
     setSelectedBatchId(batchId)
     setShowBatchDetail(true)
   }
 
-  // Add this function to handle going back from detail view:
   const handleBackFromDetail = () => {
     setShowBatchDetail(false)
     setSelectedBatchId(null)
   }
 
-  // Add conditional rendering at the start of the return statement:
   if (showBatchDetail && selectedBatchId) {
     return <BatchDetail batchId={selectedBatchId.toString()} onBack={handleBackFromDetail} />
   }
 
-  // Enhanced filter and sort logic
   const filteredAndSortedBatches = batchesState
     .filter((batch) => {
-      // Search filter
       const matchesSearch =
         batch.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
         batch.bopNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         batch.wineKit.toLowerCase().includes(searchTerm.toLowerCase())
 
-      // Week filter
       const matchesWeekFilter = weekFilter === "all" || batch.kitWeeks.toString() === weekFilter
 
-      // Status filter
       let matchesStatusFilter = true
       if (statusFilter === "in-progress") {
         matchesStatusFilter = batch.status === "pending"
       } else if (statusFilter === "completed") {
         matchesStatusFilter = batch.status === "done"
       } else if (statusFilter === "overdue") {
-        // For demo purposes, consider batches with bottle date in the past as overdue
         const bottleDate = new Date(batch.bottle)
         const today = new Date()
         matchesStatusFilter = batch.status === "pending" && bottleDate < today
@@ -293,7 +284,7 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
   return (
     <div className="pt-16 lg:pt-20 pb-32 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        {/* Search Bar - Always Visible */}
+        {/* Search Bar */}
         <div className="mb-4">
           <div className="relative">
             <input
@@ -319,7 +310,7 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
           </div>
         </div>
 
-        {/* Mobile Filter Toggle Button */}
+        {/* Mobile Filter Toggle */}
         <div className="mb-4 lg:hidden">
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -347,7 +338,7 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
           </button>
         </div>
 
-        {/* Mobile Collapsible Filters */}
+        {/* Mobile Filters */}
         {showFilters && (
           <div className="mb-4 lg:hidden">
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-4 space-y-4">
@@ -398,7 +389,7 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
           </div>
         )}
 
-        {/* Desktop Filters - Always Visible */}
+        {/* Desktop Filters */}
         <div className="hidden lg:block mb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
@@ -443,12 +434,11 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
           </div>
         </div>
 
-        {/* Results Count with Info Icon */}
+        {/* Results Count */}
         <div className="mb-4 flex items-center justify-between">
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Showing {filteredAndSortedBatches.length} of {batchesState.length} batches
           </p>
-          {/* Info Icon with Tooltip */}
           <div className="relative group">
             <Info className="w-4 h-4 text-gray-400 cursor-pointer" />
             <div className="absolute right-0 top-full mt-2 w-48 p-2 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-30">
@@ -457,7 +447,7 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
           </div>
         </div>
 
-        {/* Mobile: Card Layout */}
+        {/* Mobile Cards */}
         <div className="block lg:hidden space-y-4">
           {filteredAndSortedBatches.map((batch) => (
             <Card
@@ -466,7 +456,6 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
               className="p-4 bg-white dark:bg-gray-800 border-0 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98] dark:shadow-gray-900/20"
             >
               <div className="space-y-3">
-                {/* Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
@@ -481,13 +470,11 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
                   </span>
                 </div>
 
-                {/* Customer & Wine Kit */}
                 <div>
                   <h3 className="font-medium text-gray-900 dark:text-gray-100">{batch.customer}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{batch.wineKit}</p>
                 </div>
 
-                {/* Progress Bar */}
                 {batch.status === "pending" && (
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
@@ -503,7 +490,6 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
                   </div>
                 )}
 
-                {/* Dates */}
                 <div className="grid grid-cols-4 gap-2 text-xs">
                   <div className="text-center">
                     <p className="text-gray-500 dark:text-gray-400 mb-1">Put-Up</p>
@@ -527,7 +513,7 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
           ))}
         </div>
 
-        {/* Desktop: Table Layout */}
+        {/* Desktop Table */}
         <div className="hidden lg:block bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -604,7 +590,7 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
           </div>
         </div>
 
-        {/* Enhanced Empty State */}
+        {/* Empty States */}
         {filteredAndSortedBatches.length === 0 && batchesState.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 lg:py-24">
             <div className="w-20 h-20 lg:w-24 lg:h-24 mx-auto mb-6 bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-2xl flex items-center justify-center">
@@ -640,7 +626,6 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
           </div>
         )}
 
-        {/* Search Results Empty State */}
         {filteredAndSortedBatches.length === 0 && batchesState.length > 0 && (
           <div className="flex flex-col items-center justify-center py-16 lg:py-24">
             <div className="w-16 h-16 lg:w-20 lg:h-20 mx-auto mb-6 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
@@ -674,17 +659,19 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
 function NewBatchView() {
   const [formData, setFormData] = useState({
     customerName: "",
-    customerEmail: "", // New optional field
+    customerEmail: "",
     wineKitName: "",
     kitDuration: "6",
     dateOfSale: "",
-    putUpStatus: "no", // "yes" or "no"
+    putUpStatus: "no",
     scheduledPutUpDate: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isLoading, setIsLoading] = useState(false)
+  const { showSuccess, showError } = useToast()
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }))
     }
@@ -698,27 +685,23 @@ function NewBatchView() {
     let putUpDate: Date
 
     if (putUpStatus === "yes") {
-      // If already put up, use today's date
       putUpDate = new Date()
     } else {
-      // If not put up yet, use scheduled date or date of sale
       putUpDate = new Date(scheduledPutUpDate || dateOfSale)
     }
 
-    // Calculate subsequent dates
     const rackingDate = new Date(putUpDate)
-    rackingDate.setDate(rackingDate.getDate() + 14) // 2 weeks
+    rackingDate.setDate(rackingDate.getDate() + 14)
 
     const filteringDate = new Date(rackingDate)
     const weeksToAdd = Number.parseInt(kitDuration) - 2
     filteringDate.setDate(filteringDate.getDate() + weeksToAdd * 7)
 
     const bottlingDate = new Date(filteringDate)
-    bottlingDate.setDate(bottlingDate.getDate() + 14) // 2 weeks
+    bottlingDate.setDate(bottlingDate.getDate() + 14)
 
-    // Adjust if bottling falls on Sunday (day 0)
     if (bottlingDate.getDay() === 0) {
-      bottlingDate.setDate(bottlingDate.getDate() + 1) // Move to Monday
+      bottlingDate.setDate(bottlingDate.getDate() + 1)
     }
 
     return {
@@ -773,7 +756,6 @@ function NewBatchView() {
     if (validateForm()) {
       setIsLoading(true)
       try {
-        // Simulate API call
         await new Promise((resolve, reject) => {
           setTimeout(() => {
             if (Math.random() > 0.9) {
@@ -786,7 +768,6 @@ function NewBatchView() {
 
         showSuccess("Batch Saved", "Your new batch has been created successfully!")
 
-        // Reset form
         setFormData({
           customerName: "",
           customerEmail: "",
@@ -804,21 +785,13 @@ function NewBatchView() {
     }
   }
 
-  // Add loading state
-  const [isLoading, setIsLoading] = useState(false)
-
-  // Add toast hook
-  const { showSuccess, showError } = useToast()
-
   const calculatedDates = calculateDates()
 
   return (
     <div className="pt-16 lg:pt-20 pb-32 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
-        {/* Form Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 mb-6">
           <div className="space-y-6">
-            {/* Customer Name */}
             <div>
               <label htmlFor="customerName" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                 Customer Name
@@ -840,7 +813,6 @@ function NewBatchView() {
               )}
             </div>
 
-            {/* Customer Email (Optional) */}
             <div>
               <label
                 htmlFor="customerEmail"
@@ -858,7 +830,6 @@ function NewBatchView() {
               />
             </div>
 
-            {/* Wine Kit Name */}
             <div>
               <label htmlFor="wineKitName" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                 Wine Kit Name
@@ -880,7 +851,6 @@ function NewBatchView() {
               )}
             </div>
 
-            {/* Kit Duration */}
             <div>
               <label htmlFor="kitDuration" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                 Kit Duration
@@ -898,7 +868,6 @@ function NewBatchView() {
               </select>
             </div>
 
-            {/* Date of Sale */}
             <div>
               <label htmlFor="dateOfSale" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                 Date of Sale
@@ -917,7 +886,6 @@ function NewBatchView() {
               {errors.dateOfSale && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.dateOfSale}</p>}
             </div>
 
-            {/* Put-Up Status */}
             <div>
               <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
                 Has this kit already been put up?
@@ -950,7 +918,6 @@ function NewBatchView() {
               </div>
             </div>
 
-            {/* Scheduled Put-Up Date - only show if "No" is selected */}
             {formData.putUpStatus === "no" && (
               <div>
                 <label
@@ -974,13 +941,11 @@ function NewBatchView() {
           </div>
         </div>
 
-        {/* Live Preview Section */}
         {calculatedDates && (
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800 p-6 mb-6">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Batch Timeline Preview</h3>
 
             <div className="space-y-4">
-              {/* Timeline Steps */}
               <div className="space-y-3">
                 <div className="flex items-center gap-4">
                   <div className="w-8 h-8 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
@@ -1031,7 +996,6 @@ function NewBatchView() {
                 </div>
               </div>
 
-              {/* Summary */}
               <div className="mt-6 pt-4 border-t border-blue-200 dark:border-blue-700">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -1050,7 +1014,6 @@ function NewBatchView() {
           </div>
         )}
 
-        {/* Sticky Save Button */}
         <div className="sticky bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <div className="max-w-2xl mx-auto">
             <button
@@ -1074,10 +1037,6 @@ function NewBatchView() {
   )
 }
 
-interface SettingsViewProps {
-  userProfile: UserProfile
-}
-
 function SettingsView({ userProfile }: { userProfile: UserProfile }) {
   const [userEmail] = useState("sarah@sunsetvalley.com")
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
@@ -1086,11 +1045,9 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
   const router = useRouter()
   const { showSuccess, showError } = useToast()
 
-  // Email change state
   const [newEmail, setNewEmail] = useState("")
   const [isEmailChangeLoading, setIsEmailChangeLoading] = useState(false)
 
-  // Support form state
   const [supportForm, setSupportForm] = useState({
     subject: "",
     message: "",
@@ -1116,11 +1073,9 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
 
   const confirmLogout = async () => {
     try {
-      // Simulate logout process
       await new Promise((resolve) => setTimeout(resolve, 1000))
       showSuccess("Logged Out", "You have been successfully logged out.")
       setShowLogoutConfirm(false)
-      // In real app, redirect to login
       setTimeout(() => {
         router.push("/login")
       }, 1500)
@@ -1200,7 +1155,6 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
     }
   }
 
-  // Add the PasswordChangeModal before the return statement:
   return (
     <>
       <PasswordChangeModal
@@ -1209,18 +1163,15 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
         onSuccess={handlePasswordChangeSuccess}
         onError={handlePasswordChangeError}
       />
-      {/* Rest of the existing SettingsView JSX... */}
 
       <div className="pt-16 lg:pt-20 pb-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto space-y-6">
-          {/* Account Section */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Account</h2>
             </div>
 
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
-              {/* Current Email Display */}
               <div className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1245,7 +1196,6 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
                 </div>
               </div>
 
-              {/* Email Change Section */}
               <div className="px-6 py-4">
                 <div className="space-y-4">
                   <div>
@@ -1282,17 +1232,17 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
                 </div>
               </div>
 
-              {/* Winery Access Code */}
               <div className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Winery Access Code</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{userProfile.wineries?.join_code || 'N/A'}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {userProfile.wineries?.join_code || "N/A"}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Change Password */}
               <div className="px-6 py-4">
                 <button
                   onClick={handleChangePassword}
@@ -1315,14 +1265,12 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
             </div>
           </div>
 
-          {/* App Preferences Section */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">App Preferences</h2>
             </div>
 
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
-              {/* Dark Mode Toggle */}
               <div className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1344,15 +1292,14 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
                 </div>
               </div>
             </div>
+          </div>
 
-          {/* Support Section */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Support</h2>
             </div>
 
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
-              {/* User Guide Button */}
               <div className="px-6 py-4">
                 <button
                   onClick={handleOpenUserGuide}
@@ -1378,13 +1325,11 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
                 </button>
               </div>
 
-              {/* Message Support Form */}
               <div className="px-6 py-4">
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Message Support</h3>
 
-                    {/* Subject Line (Optional) */}
                     <div className="mb-4">
                       <label
                         htmlFor="supportSubject"
@@ -1403,7 +1348,6 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
                       />
                     </div>
 
-                    {/* Message Text Area */}
                     <div className="mb-4">
                       <label
                         htmlFor="supportMessage"
@@ -1422,7 +1366,6 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
                       />
                     </div>
 
-                    {/* Send Button */}
                     <button
                       onClick={handleSupportSubmit}
                       disabled={isSupportLoading || !supportForm.message.trim()}
@@ -1438,7 +1381,6 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
                       )}
                     </button>
 
-                    {/* Confirmation Message */}
                     {supportSent && (
                       <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                         <div className="flex items-center gap-2">
@@ -1463,69 +1405,64 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* App Info Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">About</h2>
-              </div>
-
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                {/* Version */}
-                <div className="px-6 py-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Version</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">BOP Tracker v1.0.0</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Logout Button */}
-              <div className="px-6 py-4 flex flex-col gap-4">
-                <button
-                  onClick={handleLogout}
-                  className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white font-medium py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98]"
-                >
-                  Log Out
-                </button>
-                {/* TEMP: Admin Panel Button */}
-                <button
-                  onClick={() => router.push("/admin")}
-                  className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 px-4 rounded-xl shadow-sm transition-all duration-200 active:scale-[0.98] border-2 border-yellow-600"
-                >
-                  TEMP: Go to Admin Panel
-                </button>
-              </div>
-
-              {/* Logout Confirmation Modal */}
-              {showLogoutConfirm && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center p-4 z-50">
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Log Out</h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">
-                      Are you sure you want to log out of your account?
-                    </p>
-
-                    <div className="flex gap-3">
-                      <button
-                        onClick={cancelLogout}
-                        className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-medium py-3 px-4 rounded-xl transition-colors duration-200"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={confirmLogout}
-                        className="flex-1 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200"
-                      >
-                        Log Out
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">About</h2>
             </div>
+
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              <div className="px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Version</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">BOP Tracker v1.0.0</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 flex flex-col gap-4">
+              <button
+                onClick={handleLogout}
+                className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white font-medium py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98]"
+              >
+                Log Out
+              </button>
+              <button
+                onClick={() => router.push("/admin")}
+                className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 px-4 rounded-xl shadow-sm transition-all duration-200 active:scale-[0.98] border-2 border-yellow-600"
+              >
+                TEMP: Go to Admin Panel
+              </button>
+            </div>
+
+            {showLogoutConfirm && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center p-4 z-50">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Log Out</h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    Are you sure you want to log out of your account?
+                  </p>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={cancelLogout}
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-medium py-3 px-4 rounded-xl transition-colors duration-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={confirmLogout}
+                      className="flex-1 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200"
+                    >
+                      Log Out
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1533,24 +1470,10 @@ function SettingsView({ userProfile }: { userProfile: UserProfile }) {
   )
 }
 
-function generateAccessCode() {\
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-  let code = ""\
-  for (let i = 0; i < 6; i++) {\
-    code += characters.charAt(Math.floor(Math.random() * characters.length))\
-  }
-  return code
-}
-
 export default function BOPTracker({ userProfile }: BOPTrackerProps) {
-  // Add toast hook at the top of the component\
   const { toasts, removeToast, showSuccess, showError } = useToast()
-
-  // Add winery name state at the top of the component
-  // const [wineryName] = useState("Maple Valley") // This would come from auth context\
   const [tasks, setTasks] = useState<Task[]>(tasksData)
   const [activeTab, setActiveTab] = useState("today")
-  // Add state for selected date at the top of the BOPTracker component:
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -1559,92 +1482,78 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
 
   const wineryName = userProfile.wineries?.name || "My Winery"
 
-  // ─── Date helpers ─────────────────────────────────────────────
-const formatSelectedDate = (date: Date) => {
-  return date.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: \"numeric\",
-    year: "numeric",
-  })
-}
-\
-const isToday = (date: Date) => {
-  const today = new Date()
-  return date.toDateString() === today.toDateString()
-}
-\
-const isFuture = (date: Date) => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const compareDate = new Date(date)\
-  compareDate.setHours(0, 0, 0, 0)
-  return compareDate > today
-}
+  const formatSelectedDate = (date: Date) => {
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    })
+  }
 
-const goToPreviousDay = () => {
-  const newDate = new Date(selectedDate)
-  newDate.setDate(newDate.getDate() - 1)\
-  setSelectedDate(newDate)
-}
+  const isToday = (date: Date) => {
+    const today = new Date()
+    return date.toDateString() === today.toDateString()
+  }
 
-const goToNextDay = () => {
-  const newDate = new Date(selectedDate)
-  newDate.setDate(newDate.getDate() + 1)\
-  setSelectedDate(newDate)
-}
+  const isFuture = (date: Date) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const compareDate = new Date(date)
+    compareDate.setHours(0, 0, 0, 0)
+    return compareDate > today
+  }
 
-const goToToday = () => {
-  setSelectedDate(new Date())
-}
+  const goToPreviousDay = () => {
+    const newDate = new Date(selectedDate)
+    newDate.setDate(newDate.getDate() - 1)
+    setSelectedDate(newDate)
+  }
 
-  // Update toggleTaskCompletion function
+  const goToNextDay = () => {
+    const newDate = new Date(selectedDate)
+    newDate.setDate(newDate.getDate() + 1)
+    setSelectedDate(newDate)
+  }
+
+  const goToToday = () => {
+    setSelectedDate(new Date())
+  }
+
   const toggleTaskCompletion = (taskId: number) => {
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
 
-    try {\
-      setTasks(tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)))\
-      // Removed toast notifications for task completion\
+    try {
+      setTasks(tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)))
     } catch (error) {
       showError("Update Failed", "Something went wrong")
     }
   }
 
-  // Group tasks by type
   const groupedTasks = tasks.reduce((groups: { [key: string]: Task[] }, task) => {
     const group = groups[task.type] || []
-    group.push(task)\
-    groups[task.type] = group\
+    group.push(task)
+    groups[task.type] = group
     return groups
   }, {})
 
-  // Get today's date formatted nicely
-  const today = new Date()
-  const formattedDate = today.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  })
-\
   const completedCount = tasks.filter((task) => task.completed).length
   const totalCount = tasks.length
 
   useEffect(() => {
-    // Trigger confetti when all tasks become completed
-    if (completedCount === totalCount && totalCount > 0 && completedCount > prevCompletedCount) {\
+    if (completedCount === totalCount && totalCount > 0 && completedCount > prevCompletedCount) {
       setShowConfetti(true)
     }
-    setPrevCompletedCount(completedCount)\
+    setPrevCompletedCount(completedCount)
   }, [completedCount, totalCount, prevCompletedCount])
 
-  // Get page title based on active tab
   const getPageTitle = () => {
     switch (activeTab) {
       case "today":
         return `${wineryName} Tasks`
-      case "batches\":\
-        return \"All Batches"
+      case "batches":
+        return "All Batches"
       case "new":
         return "Create New Batch"
       case "settings":
@@ -1654,13 +1563,12 @@ const goToToday = () => {
     }
   }
 
-  // Update the getPageSubtitle function to use selectedDate:
   const getPageSubtitle = () => {
     switch (activeTab) {
       case "today":
         return "BOP Tracker"
-      case "batches":\
-        return \"Manage your wine batches"
+      case "batches":
+        return "Manage your wine batches"
       case "new":
         return "Start a new wine batch"
       case "settings":
@@ -1671,44 +1579,38 @@ const goToToday = () => {
   }
 
   function getTaskTypeHeader(taskType: string, date: Date) {
-  const today = new Date()
-  const isPast = date < today
-  const isFutureDate = date > today
-\
-  if (isToday(date)) return taskType
+    const today = new Date()
+    const isPast = date < today
 
-  const dateStr = date.toLocaleDateString(\"en-US", {
-    month: "long",
-    day: "numeric",
-  })
+    if (isToday(date)) return taskType
 
-  if (taskType.includes("Bottle")) {
-    return isPast ? \`Bottled on ${dateStr}` : `Bottle on ${dateStr}`
-  }
-  if (taskType.includes(\"Filter")) {
-    return isPast ? `Filtered on ${dateStr}` : `Filter on ${dateStr}`
-  }
-  if (taskType.includes("Rack")) {
-    return isPast ? `Racked on ${dateStr}` : `Rack on ${dateStr}`
-  }
-  if (taskType.includes("Put-Up")) {
-    return `Put-Up on ${dateStr}`
-  }
-  if (taskType === "Overdue") {
-    return "Overdue"
-  }
-  return taskType
-}
+    const dateStr = date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+    })
 
-  // Replace the entire "today" case in renderContent with:
+    if (taskType.includes("Bottle")) {
+      return isPast ? `Bottled on ${dateStr}` : `Bottle on ${dateStr}`
+    }
+    if (taskType.includes("Filter")) {
+      return isPast ? `Filtered on ${dateStr}` : `Filter on ${dateStr}`
+    }
+    if (taskType.includes("Rack")) {
+      return isPast ? `Racked on ${dateStr}` : `Rack on ${dateStr}`
+    }
+    if (taskType.includes("Put-Up")) {
+      return `Put-Up on ${dateStr}`
+    }
+    if (taskType === "Overdue") {
+      return "Overdue"
+    }
+    return taskType
+  }
+
   const renderContent = () => {
-    const wineryName = userProfile.wineries?.name || 'My Winery';
-    const wineryAccessCode = userProfile.wineries?.join_code || 'N/A';
-
     switch (activeTab) {
       case "today":
-        // Filter tasks for selected date (for demo, we'll show all tasks but you'd filter by date in real app)
-        const selectedDateTasks = tasks // In real app: filter tasks by selectedDate
+        const selectedDateTasks = tasks
         const selectedGroupedTasks = selectedDateTasks.reduce((groups: { [key: string]: Task[] }, task) => {
           const group = groups[task.type] || []
           group.push(task)
@@ -1718,7 +1620,6 @@ const goToToday = () => {
 
         return (
           <div className="max-w-7xl mx-auto pt-8 lg:pt-12">
-            {/* Date Navigation */}
             <div className="mb-8">
               <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <button
@@ -1762,7 +1663,6 @@ const goToToday = () => {
                 </button>
               </div>
 
-              {/* Back to Today Button */}
               {!isToday(selectedDate) && (
                 <div className="flex justify-center mt-4">
                   <button
@@ -1775,7 +1675,6 @@ const goToToday = () => {
               )}
             </div>
 
-            {/* Task Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
               {Object.entries(selectedGroupedTasks)
                 .sort(([a], [b]) => {
@@ -1794,7 +1693,6 @@ const goToToday = () => {
                 })
                 .map(([groupType, groupTasks]) => (
                   <section key={groupType} className="lg:col-span-1">
-                    {/* Group Header */}
                     <div className="mb-4 lg:mb-6">
                       <div className="flex items-center justify-between">
                         <h2
@@ -1828,12 +1726,11 @@ const goToToday = () => {
                                   ? "bg-gradient-to-r from-teal-500/20 to-transparent"
                                   : groupType.includes("Put-Up")
                                     ? "bg-gradient-to-r from-yellow-500/20 to-transparent"
-                                    : "bg-gradient-to-r from-blue-500/20 to-transparent" // Fallback to blue
+                                    : "bg-gradient-to-r from-blue-500/20 to-transparent"
                         }`}
                       />
                     </div>
 
-                    {/* Task Cards */}
                     <div className="space-y-3 lg:space-y-4">
                       {groupTasks.map((task) => (
                         <Card
@@ -1848,7 +1745,6 @@ const goToToday = () => {
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
-                              {/* Task Header */}
                               <div className="flex items-center gap-3 mb-3 flex-wrap">
                                 <span
                                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -1864,7 +1760,7 @@ const goToToday = () => {
                                               ? "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/30 dark:text-fuchsia-400"
                                               : task.action === "Start"
                                                 ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                                : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" // Fallback
+                                                : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
                                   }`}
                                 >
                                   {task.action === "Start" ? "Put-Up" : task.action}
@@ -1874,7 +1770,6 @@ const goToToday = () => {
                                 </span>
                               </div>
 
-                              {/* Wine Kit Name */}
                               <h3
                                 className={`font-medium text-gray-900 dark:text-gray-100 mb-2 text-base lg:text-lg ${
                                   task.completed ? "line-through text-gray-500 dark:text-gray-400" : ""
@@ -1883,7 +1778,6 @@ const goToToday = () => {
                                 {task.wineKit}
                               </h3>
 
-                              {/* Customer Name */}
                               <p
                                 className={`text-sm lg:text-base ${task.completed ? "text-gray-400 dark:text-gray-500" : "text-gray-600 dark:text-gray-400"}`}
                               >
@@ -1891,7 +1785,6 @@ const goToToday = () => {
                               </p>
                             </div>
 
-                            {/* Action Button */}
                             <Button
                               onClick={() => toggleTaskCompletion(task.id)}
                               variant={task.completed ? "secondary" : "default"}
@@ -1927,7 +1820,6 @@ const goToToday = () => {
                 ))}
             </div>
 
-            {/* Empty State */}
             {Object.keys(selectedGroupedTasks).length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 lg:py-24">
                 <div className="text-6xl lg:text-8xl mb-6">
@@ -1950,7 +1842,6 @@ const goToToday = () => {
               </div>
             )}
 
-            {/* Date Picker Modal */}
             {showDatePicker && (
               <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center p-4 z-50">
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -2001,7 +1892,6 @@ const goToToday = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Fixed Header */}
       <header className="fixed top-0 left-0 right-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
         <div className="px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -2011,7 +1901,6 @@ const goToToday = () => {
               </h1>
               <p className="text-sm lg:text-base text-gray-500 dark:text-gray-400 mt-1">{getPageSubtitle()}</p>
             </div>
-            {/* Mobile and Desktop Progress Circle */}
             {activeTab === "today" && (
               <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 relative" ref={progressCircleRef}>
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
@@ -2039,13 +1928,11 @@ const goToToday = () => {
                     }}
                   />
                 </svg>
-                {/* Center progress counter inside the ring */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-xs sm:text-sm lg:text-base font-semibold text-gray-900 dark:text-gray-100">
                     {completedCount}/{totalCount}
                   </span>
                 </div>
-                {/* Confetti positioned at the center of the progress circle */}
                 {showConfetti && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <Confetti trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
@@ -2057,13 +1944,10 @@ const goToToday = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="pt-24 lg:pt-32 pb-32 px-4 sm:px-6 lg:px-8">{renderContent()}</main>
 
-      {/* Bottom Tab Bar */}
       <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Add ToastContainer at the end */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
