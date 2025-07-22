@@ -1557,6 +1557,8 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
   const [prevCompletedCount, setPrevCompletedCount] = useState(0)
   const progressCircleRef = useRef<HTMLDivElement>(null)
 
+  const wineryName = userProfile.wineries?.name || "My Winery"
+
   // ─── Date helpers ─────────────────────────────────────────────
 const formatSelectedDate = (date: Date) => {
   return date.toLocaleDateString("en-US", {
@@ -1996,8 +1998,6 @@ const goToToday = () => {
         return null
     }
   }
-
-  // const [wineryAccessCode, setWineryAccessCode] = useState(generateAccessCode())
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
