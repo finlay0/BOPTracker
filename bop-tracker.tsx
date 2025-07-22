@@ -1546,7 +1546,7 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
   // Add toast hook at the top of the component\
   const { toasts, removeToast, showSuccess, showError } = useToast()
 
-  // Add winery name state at the top of the component\
+  // Add winery name state at the top of the component
   // const [wineryName] = useState("Maple Valley") // This would come from auth context\
   const [tasks, setTasks] = useState<Task[]>(tasksData)
   const [activeTab, setActiveTab] = useState("today")
@@ -1701,14 +1701,14 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
   }
 
   // Replace the entire "today" case in renderContent with:
-  const renderContent = () => {\
+  const renderContent = () => {
     const wineryName = userProfile.wineries?.name || 'My Winery';
     const wineryAccessCode = userProfile.wineries?.join_code || 'N/A';
 
-    switch (activeTab) {\
+    switch (activeTab) {
       case "today":
         // Filter tasks for selected date (for demo, we'll show all tasks but you'd filter by date in real app)
-        const selectedDateTasks = tasks // In real app: filter tasks by selectedDate\
+        const selectedDateTasks = tasks // In real app: filter tasks by selectedDate
         const selectedGroupedTasks = selectedDateTasks.reduce((groups: { [key: string]: Task[] }, task) => {
           const group = groups[task.type] || []
           group.push(task)
