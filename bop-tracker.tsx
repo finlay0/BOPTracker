@@ -1557,92 +1557,92 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
   const [prevCompletedCount, setPrevCompletedCount] = useState(0)
   const progressCircleRef = useRef<HTMLDivElement>(null)
 
-  // Add helper functions after the state declarations:
-  const formatSelectedDate = (date: Date) => {\
-    return date.toLocaleDateString("en-US", {
-      weekday: \"long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    })
-  }
+  // ─── Date helpers ─────────────────────────────────────────────
+const formatSelectedDate = (date: Date) => {
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: \"numeric\",
+    year: "numeric",
+  })
+}
+\
+const isToday = (date: Date) => {
+  const today = new Date()
+  return date.toDateString() === today.toDateString()
+}
+\
+const isFuture = (date: Date) => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const compareDate = new Date(date)\
+  compareDate.setHours(0, 0, 0, 0)
+  return compareDate > today
+}
 
-  const isToday = (date: Date) => {\
-    const today = new Date()
-    return date.toDateString() === today.toDateString()
-  }
+const goToPreviousDay = () => {
+  const newDate = new Date(selectedDate)
+  newDate.setDate(newDate.getDate() - 1)\
+  setSelectedDate(newDate)
+}
 
-  const isFuture = (date: Date) => {\
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const compareDate = new Date(date)
-    compareDate.setHours(0, 0, 0, 0)
-    return compareDate > today
-  }
+const goToNextDay = () => {
+  const newDate = new Date(selectedDate)
+  newDate.setDate(newDate.getDate() + 1)\
+  setSelectedDate(newDate)
+}
 
-  const goToPreviousDay = () => {\
-    const newDate = new Date(selectedDate)
-    newDate.setDate(newDate.getDate() - 1)
-    setSelectedDate(newDate)
-  }
-
-  const goToNextDay = () => {\
-    const newDate = new Date(selectedDate)
-    newDate.setDate(newDate.getDate() + 1)
-    setSelectedDate(newDate)
-  }
-
-  const goToToday = () => {
-    setSelectedDate(new Date())
-  }
+const goToToday = () => {
+  setSelectedDate(new Date())
+}
 
   // Update toggleTaskCompletion function
-  const toggleTaskCompletion = (taskId: number) => {\
+  const toggleTaskCompletion = (taskId: number) => {
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
 
-    try {
-      setTasks(tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)))
-      // Removed toast notifications for task completion
+    try {\
+      setTasks(tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)))\
+      // Removed toast notifications for task completion\
     } catch (error) {
       showError("Update Failed", "Something went wrong")
     }
   }
 
-  // Group tasks by type\
-  const groupedTasks = tasks.reduce((groups: { [key: string]: Task[] }, task) => {\
+  // Group tasks by type
+  const groupedTasks = tasks.reduce((groups: { [key: string]: Task[] }, task) => {
     const group = groups[task.type] || []
-    group.push(task)
-    groups[task.type] = group
+    group.push(task)\
+    groups[task.type] = group\
     return groups
   }, {})
 
   // Get today's date formatted nicely
   const today = new Date()
   const formattedDate = today.toLocaleDateString("en-US", {
-    weekday: \"long",
+    weekday: "long",
     month: "long",
     day: "numeric",
   })
-
+\
   const completedCount = tasks.filter((task) => task.completed).length
   const totalCount = tasks.length
 
   useEffect(() => {
-    // Trigger confetti when all tasks become completed\
-    if (completedCount === totalCount && totalCount > 0 && completedCount > prevCompletedCount) {
+    // Trigger confetti when all tasks become completed
+    if (completedCount === totalCount && totalCount > 0 && completedCount > prevCompletedCount) {\
       setShowConfetti(true)
     }
-    setPrevCompletedCount(completedCount)
+    setPrevCompletedCount(completedCount)\
   }, [completedCount, totalCount, prevCompletedCount])
 
   // Get page title based on active tab
-  const getPageTitle = () => {\
-    switch (activeTab) {\
+  const getPageTitle = () => {
+    switch (activeTab) {
       case "today":
         return `${wineryName} Tasks`
-      case "batches":
-        return "All Batches"
+      case "batches\":\
+        return \"All Batches"
       case "new":
         return "Create New Batch"
       case "settings":
@@ -1653,12 +1653,12 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
   }
 
   // Update the getPageSubtitle function to use selectedDate:
-  const getPageSubtitle = () => {\
-    switch (activeTab) {\
+  const getPageSubtitle = () => {
+    switch (activeTab) {
       case "today":
         return "BOP Tracker"
-      case "batches":
-        return "Manage your wine batches"
+      case "batches":\
+        return \"Manage your wine batches"
       case "new":
         return "Start a new wine batch"
       case "settings":
@@ -1668,37 +1668,35 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
     }
   }
 
-  function getTaskTypeHeader(taskType: string, date: Date) {\
-    const today = new Date()
-    const isPast = date < today\
-    const isFutureDate = date > today
+  function getTaskTypeHeader(taskType: string, date: Date) {
+  const today = new Date()
+  const isPast = date < today
+  const isFutureDate = date > today
+\
+  if (isToday(date)) return taskType
 
-    if (isToday(date)) {\
-      return taskType // e.g. "Bottle Today"
-    }
+  const dateStr = date.toLocaleDateString(\"en-US", {
+    month: "long",
+    day: "numeric",
+  })
 
-    const dateStr = date.toLocaleDateString("en-US", {
-      month: \"long",
-      day: "numeric",
-    })
-
-    if (taskType.includes("Bottle")) {\
-      return isPast ? `Bottled on ${dateStr}` : `Bottle on ${dateStr}`
-    }
-    if (taskType.includes("Filter")) {\
-      return isPast ? `Filtered on ${dateStr}` : `Filter on ${dateStr}`
-    }
-    if (taskType.includes("Rack")) {\
-      return isPast ? `Racked on ${dateStr}` : `Rack on ${dateStr}`
-    }
-    if (taskType.includes("Put-Up")) {\
-      return `Put-Up on ${dateStr}`
-    }
-    if (taskType === "Overdue") {\
-      return "Overdue"
-    }
-    return taskType
+  if (taskType.includes("Bottle")) {
+    return isPast ? \`Bottled on ${dateStr}` : `Bottle on ${dateStr}`
   }
+  if (taskType.includes(\"Filter")) {
+    return isPast ? `Filtered on ${dateStr}` : `Filter on ${dateStr}`
+  }
+  if (taskType.includes("Rack")) {
+    return isPast ? `Racked on ${dateStr}` : `Rack on ${dateStr}`
+  }
+  if (taskType.includes("Put-Up")) {
+    return `Put-Up on ${dateStr}`
+  }
+  if (taskType === "Overdue") {
+    return "Overdue"
+  }
+  return taskType
+}
 
   // Replace the entire "today" case in renderContent with:
   const renderContent = () => {
