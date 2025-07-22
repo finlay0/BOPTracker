@@ -1,16 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
-import { createBrowserClient } from '@supabase/ssr'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-// Client-side Supabase client
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
-
-// Server-side Supabase client (for server actions)
-export const createServerClient = () => {
-  return createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-}
+// Re-export standardized clients
+export { supabase } from '@/utils/supabase/client'
+export { supabaseServer } from '@/utils/supabase/server'
 
 // Database types (updated to match corrected schema)
 export type Database = {
@@ -21,48 +11,66 @@ export type Database = {
           id: string
           name: string
           join_code: string
-          timezone: string
+          address: string | null
+          phone: string | null
+          email: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           name: string
-          join_code: string
-          timezone?: string
+          join_code?: string
+          address?: string | null
+          phone?: string | null
+          email?: string | null
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           name?: string
           join_code?: string
-          timezone?: string
+          address?: string | null
+          phone?: string | null
+          email?: string | null
           created_at?: string
+          updated_at?: string
         }
       }
-      users: {
+      user_profiles: {
         Row: {
           id: string
           email: string
+          first_name: string | null
+          last_name: string | null
           winery_id: string | null
-          role: 'owner' | 'manager' | 'staff'
-          status: 'active' | 'inactive'
+          role: 'owner' | 'manager' | 'member'
+          dark_mode: boolean
           created_at: string
+          updated_at: string
         }
         Insert: {
-          id?: string
+          id: string
           email: string
+          first_name?: string | null
+          last_name?: string | null
           winery_id?: string | null
-          role?: 'owner' | 'manager' | 'staff'
-          status?: 'active' | 'inactive'
+          role?: 'owner' | 'manager' | 'member'
+          dark_mode?: boolean
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           email?: string
+          first_name?: string | null
+          last_name?: string | null
           winery_id?: string | null
-          role?: 'owner' | 'manager' | 'staff'
-          status?: 'active' | 'inactive'
+          role?: 'owner' | 'manager' | 'member'
+          dark_mode?: boolean
           created_at?: string
+          updated_at?: string
         }
       }
       winery_bop_sequences: {
@@ -85,6 +93,7 @@ export type Database = {
           winery_id: string
           bop_number: number
           customer: string
+          customer_email: string | null
           wine_kit: string
           kit_weeks: 4 | 5 | 6 | 8
           date_of_sale: string
@@ -93,32 +102,46 @@ export type Database = {
           filter_date: string
           bottle_date: string
           status: 'pending' | 'done'
-          current_stage: string
+          current_stage: 'put_up' | 'rack' | 'filter' | 'bottle'
+          put_up_completed: boolean
+          rack_completed: boolean
+          filter_completed: boolean
+          bottle_completed: boolean
           notes: string | null
+          created_by: string
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           winery_id: string
-          bop_number: number // Now required, not auto-generated
+          bop_number?: number
           customer: string
+          customer_email?: string | null
           wine_kit: string
           kit_weeks: 4 | 5 | 6 | 8
           date_of_sale: string
           put_up_date: string
-          rack_date: string
-          filter_date: string
-          bottle_date: string
+          rack_date?: string
+          filter_date?: string
+          bottle_date?: string
           status?: 'pending' | 'done'
-          current_stage?: string
+          current_stage?: 'put_up' | 'rack' | 'filter' | 'bottle'
+          put_up_completed?: boolean
+          rack_completed?: boolean
+          filter_completed?: boolean
+          bottle_completed?: boolean
           notes?: string | null
+          created_by: string
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           winery_id?: string
           bop_number?: number
           customer?: string
+          customer_email?: string | null
           wine_kit?: string
           kit_weeks?: 4 | 5 | 6 | 8
           date_of_sale?: string
@@ -127,9 +150,15 @@ export type Database = {
           filter_date?: string
           bottle_date?: string
           status?: 'pending' | 'done'
-          current_stage?: string
+          current_stage?: 'put_up' | 'rack' | 'filter' | 'bottle'
+          put_up_completed?: boolean
+          rack_completed?: boolean
+          filter_completed?: boolean
+          bottle_completed?: boolean
           notes?: string | null
+          created_by?: string
           created_at?: string
+          updated_at?: string
         }
       }
       support_messages: {
@@ -139,8 +168,11 @@ export type Database = {
           user_id: string
           subject: string
           message: string
-          status: 'open' | 'resolved'
+          status: 'open' | 'in_progress' | 'resolved' | 'closed'
+          priority: 'low' | 'medium' | 'high' | 'urgent'
+          admin_response: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
@@ -148,8 +180,11 @@ export type Database = {
           user_id: string
           subject: string
           message: string
-          status?: 'open' | 'resolved'
+          status?: 'open' | 'in_progress' | 'resolved' | 'closed'
+          priority?: 'low' | 'medium' | 'high' | 'urgent'
+          admin_response?: string | null
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
@@ -157,8 +192,11 @@ export type Database = {
           user_id?: string
           subject?: string
           message?: string
-          status?: 'open' | 'resolved'
+          status?: 'open' | 'in_progress' | 'resolved' | 'closed'
+          priority?: 'low' | 'medium' | 'high' | 'urgent'
+          admin_response?: string | null
           created_at?: string
+          updated_at?: string
         }
       }
     }
@@ -173,6 +211,10 @@ export type Database = {
       }
       calculate_bottle_date: {
         Args: { filter_date: string }
+        Returns: string
+      }
+      rpc_validate_join_code: {
+        Args: { code: string }
         Returns: string
       }
     }

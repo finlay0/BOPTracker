@@ -74,20 +74,24 @@ export function PasswordChangeModal({ isOpen, onClose, onSuccess, onError }: Pas
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          if (Math.random() > 0.8) {
-            reject(new Error("Current password is incorrect"))
-          } else {
-            resolve(true)
-          }
-        }, 1500)
+      // Import Supabase client at the top of the file
+      const { supabase } = await import("@/utils/supabase/client")
+      
+      // Real password update with Supabase
+      const { error } = await supabase.auth.updateUser({
+        password: formData.newPassword
       })
+
+      if (error) {
+        console.error('Password change error:', error)
+        onError(error.message)
+        return
+      }
 
       onSuccess()
       handleClose()
     } catch (error) {
+      console.error('Password change error:', error)
       onError(error instanceof Error ? error.message : "Something went wrong")
     } finally {
       setIsLoading(false)
