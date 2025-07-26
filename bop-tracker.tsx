@@ -10,8 +10,11 @@ import { Confetti } from "./components/confetti"
 import { useRouter } from "next/navigation"
 import { ToastContainer, useToast } from "./components/toast"
 import { PasswordChangeModal } from "./components/password-change-modal"
+import BatchDetail from "./batch-detail"
 //import SettingsView from "./settings-view" // Removed duplicate import
 import type { User } from "@/types/admin" // You may need to adjust this path
+import { getTodaysTasks, updateTaskCompletion, getBatches, createBatch, calculateWineDates, getHalifaxDate, formatDateInHalifax, getTodayInHalifax, getUserSettingsProfile, updateUserEmail, submitSupportMessage, type Task as DatabaseTask, type Batch, type CreateBatchData, type UserSettingsProfile } from "@/lib/database"
+import { createClient } from "@/lib/supabase/client"
 
 interface WineryInfo {
   name: string
@@ -26,195 +29,94 @@ interface BOPTrackerProps {
   userProfile: UserProfile
 }
 
-// Sample data for today's tasks
-const tasksData = [
-  {
-    id: 1,
-    type: "Bottle Today",
-    action: "Bottle",
-    bopNumber: "#1042",
-    wineKit: "Cabernet Sauvignon",
-    customer: "Taylor",
-    completed: false,
-  },
-  {
-    id: 2,
-    type: "Bottle Today",
-    action: "Bottle",
-    bopNumber: "#1038",
-    wineKit: "Pinot Grigio",
-    customer: "Johnson",
-    completed: false,
-  },
-  {
-    id: 3,
-    type: "Filter Today",
-    action: "Filter",
-    bopNumber: "#1035",
-    wineKit: "Chardonnay",
-    customer: "Williams",
-    completed: true,
-  },
-  {
-    id: 4,
-    type: "Filter Today",
-    action: "Filter",
-    bopNumber: "#1041",
-    wineKit: "Merlot",
-    customer: "Brown",
-    completed: false,
-  },
-  {
-    id: 5,
-    type: "Rack Today",
-    action: "Rack",
-    bopNumber: "#1029",
-    wineKit: "Sauvignon Blanc",
-    customer: "Davis",
-    completed: false,
-  },
-  {
-    id: 6,
-    type: "Put-Up Today",
-    action: "Start",
-    bopNumber: "#1045",
-    wineKit: "Riesling",
-    customer: "Miller",
-    completed: false,
-  },
-  {
-    id: 7,
-    type: "Bottle Today",
-    action: "Bottle",
-    bopNumber: "#1043",
-    wineKit: "Shiraz",
-    customer: "Anderson",
-    completed: false,
-  },
-  {
-    id: 8,
-    type: "Rack Today",
-    action: "Rack",
-    bopNumber: "#1031",
-    wineKit: "Pinot Noir",
-    customer: "Wilson",
-    completed: false,
-  },
-  {
-    id: 9,
-    type: "Overdue",
-    action: "Filter",
-    bopNumber: "#1025",
-    wineKit: "Cabernet Franc",
-    customer: "Thompson",
-    completed: false,
-  },
-]
+// Tasks are now loaded from database via getTodaysTasks()
 
-interface Task {
-  id: number
-  type: string
-  action: string
-  bopNumber: string
-  wineKit: string
-  customer: string
-  completed: boolean
-}
+// Using DatabaseTask from lib/database.ts
 
-// Sample batch data
-const batchesData = [
-  {
-    id: 1,
-    bopNumber: "#1042",
-    customer: "Taylor",
-    wineKit: "Cabernet Sauvignon",
-    kitWeeks: 6,
-    putUp: "2024-06-15",
-    rack: "2024-06-29",
-    filter: "2024-07-13",
-    bottle: "2024-07-27",
-    status: "pending",
-    currentStage: "filter",
-  },
-  {
-    id: 2,
-    bopNumber: "#1038",
-    customer: "Johnson",
-    wineKit: "Pinot Grigio",
-    kitWeeks: 4,
-    putUp: "2024-06-20",
-    rack: "2024-07-04",
-    filter: "2024-07-11",
-    bottle: "2024-07-18",
-    status: "done",
-    currentStage: "completed",
-  },
-  {
-    id: 3,
-    bopNumber: "#1035",
-    customer: "Williams",
-    wineKit: "Chardonnay",
-    kitWeeks: 5,
-    putUp: "2024-06-10",
-    rack: "2024-06-24",
-    filter: "2024-07-08",
-    bottle: "2024-07-22",
-    status: "pending",
-    currentStage: "bottle",
-  },
-  {
-    id: 4,
-    bopNumber: "#1041",
-    customer: "Brown",
-    wineKit: "Merlot",
-    kitWeeks: 8,
-    putUp: "2024-05-15",
-    rack: "2024-06-12",
-    filter: "2024-07-10",
-    bottle: "2024-08-07",
-    status: "pending",
-    currentStage: "rack",
-  },
-  {
-    id: 5,
-    bopNumber: "#1029",
-    customer: "Davis",
-    wineKit: "Sauvignon Blanc",
-    kitWeeks: 4,
-    putUp: "2024-06-25",
-    rack: "2024-07-09",
-    filter: "2024-07-16",
-    bottle: "2024-07-23",
-    status: "done",
-    currentStage: "completed",
-  },
-  {
-    id: 6,
-    bopNumber: "#1045",
-    customer: "Miller",
-    wineKit: "Riesling",
-    kitWeeks: 6,
-    putUp: "2024-06-18",
-    rack: "2024-07-02",
-    filter: "2024-07-16",
-    bottle: "2024-07-30",
-    status: "pending",
-    currentStage: "put-up",
-  },
-]
+// Batches are now loaded from database via getBatches()
 
 function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
   const [searchTerm, setSearchTerm] = useState("")
   const [weekFilter, setWeekFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [sortBy, setSortBy] = useState("bottling-soonest")
-  const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null)
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null)
   const [showBatchDetail, setShowBatchDetail] = useState(false)
-  const [batchesState, setBatchesState] = useState(batchesData)
-  const [showFilters, setShowFilters] = useState(false) // Add this new state
+  const [batchesState, setBatchesState] = useState<Batch[]>([])
+  const [batchesLoading, setBatchesLoading] = useState(true)
+  const [showFilters, setShowFilters] = useState(false)
+  const { showError } = useToast()
+
+  // Convert database batch to UI format
+  const formatBatchForUI = (batch: Batch) => ({
+    id: batch.id,
+    bopNumber: `#${batch.bop_number.toString().padStart(4, '0')}`,
+    customer: batch.customer_name,
+    wineKit: batch.kit_name,
+    kitWeeks: batch.kit_weeks,
+    putUp: batch.date_put_up || '',
+    rack: batch.date_rack || '',
+    filter: batch.date_filter || '',
+    bottle: batch.date_bottle || '',
+    status: batch.status === 'completed' ? 'done' : 'pending',
+    currentStage: batch.current_stage,
+  })
+
+  // Load batches when component mounts
+  useEffect(() => {
+    const loadBatches = async () => {
+      try {
+        setBatchesLoading(true)
+        const dbBatches = await getBatches()
+        setBatchesState(dbBatches)
+      } catch (error) {
+        console.error('Error loading batches:', error)
+        showError("Load Failed", "Failed to load batches")
+      } finally {
+        setBatchesLoading(false)
+      }
+    }
+
+    loadBatches()
+  }, [showError])
+
+  // Real-time subscription for batch updates
+  useEffect(() => {
+    const supabase = createClient()
+    
+    const batchesSubscription = supabase
+      .channel('batches_view_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'batches'
+      }, () => {
+        // Reload batches when they change
+        getBatches().then(setBatchesState).catch(console.error)
+      })
+      .subscribe()
+
+    // Also listen for task completion changes that affect batch stages
+    const taskCompletionsSubscription = supabase
+      .channel('task_completions_batch_updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'task_completions'
+      }, () => {
+        // Reload batches when task completions change (affects current_stage)
+        getBatches().then(setBatchesState).catch(console.error)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(batchesSubscription)
+      supabase.removeChannel(taskCompletionsSubscription)
+    }
+  }, [])
 
   // Add this function to handle batch row clicks:
-  const handleBatchClick = (batchId: number) => {
+  const handleBatchClick = (batchId: string) => {
     setSelectedBatchId(batchId)
     setShowBatchDetail(true)
   }
@@ -226,7 +128,8 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
   }
 
   // Enhanced filter and sort logic
-  const filteredAndSortedBatches = batchesState
+  const formattedBatches = batchesState.map(formatBatchForUI)
+  const filteredAndSortedBatches = formattedBatches
     .filter((batch) => {
       // Search filter
       const matchesSearch =
@@ -282,6 +185,11 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
     const stages = ["put-up", "rack", "filter", "bottle", "completed"]
     const currentIndex = stages.indexOf(currentStage)
     return ((currentIndex + 1) / stages.length) * 100
+  }
+
+  // Add conditional rendering at the start of the return statement:
+  if (showBatchDetail && selectedBatchId) {
+    return <BatchDetail batchId={selectedBatchId.toString()} onBack={handleBackFromDetail} />
   }
 
   return (
@@ -437,22 +345,33 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
           </div>
         </div>
 
+        {/* Loading State */}
+        {batchesLoading && (
+          <div className="flex flex-col items-center justify-center py-16 lg:py-24">
+            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-500 dark:text-gray-400">Loading batches...</p>
+          </div>
+        )}
+
         {/* Results Count with Info Icon */}
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Showing {filteredAndSortedBatches.length} of {batchesState.length} batches
-          </p>
-          {/* Info Icon with Tooltip */}
-          <div className="relative group">
-            <Info className="w-4 h-4 text-gray-400 cursor-pointer" />
-            <div className="absolute right-0 top-full mt-2 w-48 p-2 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-30">
-              Click any row to view full batch details or make edits.
+        {!batchesLoading && (
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Showing {filteredAndSortedBatches.length} of {batchesState.length} batches
+            </p>
+            {/* Info Icon with Tooltip */}
+            <div className="relative group">
+              <Info className="w-4 h-4 text-gray-400 cursor-pointer" />
+              <div className="absolute right-0 top-full mt-2 w-48 p-2 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-30">
+                Click any row to view full batch details or make edits.
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Mobile: Card Layout */}
-        <div className="block lg:hidden space-y-4">
+        {!batchesLoading && (
+          <div className="block lg:hidden space-y-4">
           {filteredAndSortedBatches.map((batch) => (
             <Card
               key={batch.id}
@@ -521,8 +440,11 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
           ))}
         </div>
 
+        )}
+
         {/* Desktop: Table Layout */}
-        <div className="hidden lg:block bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        {!batchesLoading && (
+          <div className="hidden lg:block bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-600">
@@ -598,8 +520,10 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
           </div>
         </div>
 
+        )}
+
         {/* Enhanced Empty State */}
-        {filteredAndSortedBatches.length === 0 && batchesState.length === 0 && (
+        {!batchesLoading && filteredAndSortedBatches.length === 0 && batchesState.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 lg:py-24">
             <div className="w-20 h-20 lg:w-24 lg:h-24 mx-auto mb-6 bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-2xl flex items-center justify-center">
               <svg
@@ -635,7 +559,7 @@ function BatchesView({ setActiveTab }: { setActiveTab: (tab: string) => void }) 
         )}
 
         {/* Search Results Empty State */}
-        {filteredAndSortedBatches.length === 0 && batchesState.length > 0 && (
+        {!batchesLoading && filteredAndSortedBatches.length === 0 && batchesState.length > 0 && (
           <div className="flex flex-col items-center justify-center py-16 lg:py-24">
             <div className="w-16 h-16 lg:w-20 lg:h-20 mx-auto mb-6 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
               <svg
@@ -671,7 +595,7 @@ function NewBatchView() {
     customerEmail: "", // New optional field
     wineKitName: "",
     kitDuration: "6",
-    dateOfSale: "",
+    dateOfSale: getTodayInHalifax(),
     putUpStatus: "no", // "yes" or "no"
     scheduledPutUpDate: "",
   })
@@ -689,37 +613,18 @@ function NewBatchView() {
 
     if (!dateOfSale) return null
 
-    let putUpDate: Date
-
-    if (putUpStatus === "yes") {
-      // If already put up, use today's date
-      putUpDate = new Date()
-    } else {
-      // If not put up yet, use scheduled date or date of sale
-      putUpDate = new Date(scheduledPutUpDate || dateOfSale)
-    }
-
-    // Calculate subsequent dates
-    const rackingDate = new Date(putUpDate)
-    rackingDate.setDate(rackingDate.getDate() + 14) // 2 weeks
-
-    const filteringDate = new Date(rackingDate)
-    const weeksToAdd = Number.parseInt(kitDuration) - 2
-    filteringDate.setDate(filteringDate.getDate() + weeksToAdd * 7)
-
-    const bottlingDate = new Date(filteringDate)
-    bottlingDate.setDate(bottlingDate.getDate() + 14) // 2 weeks
-
-    // Adjust if bottling falls on Sunday (day 0)
-    if (bottlingDate.getDay() === 0) {
-      bottlingDate.setDate(bottlingDate.getDate() + 1) // Move to Monday
-    }
+    const dates = calculateWineDates(
+      dateOfSale,
+      Number.parseInt(kitDuration),
+      putUpStatus === "no" ? scheduledPutUpDate : undefined,
+      putUpStatus === "yes"
+    )
 
     return {
-      putUp: putUpDate,
-      racking: rackingDate,
-      filtering: filteringDate,
-      bottling: bottlingDate,
+      putUp: new Date(dates.putUp),
+      racking: new Date(dates.rack),
+      filtering: new Date(dates.filter),
+      bottling: new Date(dates.bottle),
     }
   }
 
@@ -729,6 +634,7 @@ function NewBatchView() {
       month: "long",
       day: "numeric",
       year: "numeric",
+      timeZone: "America/Halifax"
     })
   }
 
@@ -737,6 +643,7 @@ function NewBatchView() {
       month: "short",
       day: "numeric",
       year: "numeric",
+      timeZone: "America/Halifax"
     })
   }
 
@@ -767,18 +674,20 @@ function NewBatchView() {
     if (validateForm()) {
       setIsLoading(true)
       try {
-        // Simulate API call
-        await new Promise((resolve, reject) => {
-          setTimeout(() => {
-            if (Math.random() > 0.9) {
-              reject(new Error("Failed to save"))
-            } else {
-              resolve(true)
-            }
-          }, 1500)
-        })
+        const batchData: CreateBatchData = {
+          customer_name: formData.customerName,
+          customer_email: formData.customerEmail || undefined,
+          kit_name: formData.wineKitName,
+          kit_weeks: Number.parseInt(formData.kitDuration),
+          date_of_sale: formData.dateOfSale,
+          date_put_up: formData.putUpStatus === "no" ? formData.scheduledPutUpDate : undefined,
+          put_up_now: formData.putUpStatus === "yes"
+        }
 
-        showSuccess("Batch Saved", "Your new batch has been created successfully!")
+        const newBatch = await createBatch(batchData)
+        console.log('Created batch:', newBatch)
+
+        showSuccess("Batch Created", `Batch #${newBatch.bop_number.toString().padStart(4, '0')} has been created successfully!`)
 
         // Reset form
         setFormData({
@@ -786,12 +695,13 @@ function NewBatchView() {
           customerEmail: "",
           wineKitName: "",
           kitDuration: "6",
-          dateOfSale: "",
+          dateOfSale: getTodayInHalifax(),
           putUpStatus: "no",
           scheduledPutUpDate: "",
         })
       } catch (error) {
-        showError("Save Failed", "Something went wrong")
+        console.error('Error creating batch:', error)
+        showError("Save Failed", error instanceof Error ? error.message : "Something went wrong")
       } finally {
         setIsLoading(false)
       }
@@ -1068,17 +978,463 @@ function NewBatchView() {
   )
 }
 
-// Temporary simple SettingsView to replace the problematic one
-function SettingsView({ userProfile }: { userProfile: UserProfile }) {
+function SettingsView() {
+  const [userProfile, setUserProfile] = useState<UserSettingsProfile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const { theme, setTheme } = useTheme()
+  const router = useRouter()
+  const { showSuccess, showError } = useToast()
+
+  // Email change state
+  const [newEmail, setNewEmail] = useState("")
+  const [isEmailChangeLoading, setIsEmailChangeLoading] = useState(false)
+
+  // Support form state
+  const [supportForm, setSupportForm] = useState({
+    subject: "",
+    message: "",
+  })
+  const [isSupportLoading, setIsSupportLoading] = useState(false)
+  const [supportSent, setSupportSent] = useState(false)
+
+  // Load user profile on mount
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        setProfileLoading(true)
+        const profile = await getUserSettingsProfile()
+        setUserProfile(profile)
+        setNewEmail(profile.email)
+      } catch (error) {
+        console.error('Error loading user profile:', error)
+        showError("Load Failed", "Failed to load user profile")
+      } finally {
+        setProfileLoading(false)
+      }
+    }
+
+    loadUserProfile()
+  }, [showError])
+
+  const handleChangePassword = () => {
+    setShowPasswordModal(true)
+  }
+
+  const handlePasswordChangeSuccess = () => {
+    showSuccess("Password Updated", "Your password has been changed successfully.")
+  }
+
+  const handlePasswordChangeError = (message: string) => {
+    showError("Password Change Failed", message)
+  }
+
+  const handleLogout = () => {
+    setShowLogoutConfirm(true)
+  }
+
+  const confirmLogout = async () => {
+    try {
+      // Simulate logout process
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      showSuccess("Logged Out", "You have been successfully logged out.")
+      setShowLogoutConfirm(false)
+      // In real app, redirect to login
+      setTimeout(() => {
+        router.push("/login")
+      }, 1500)
+    } catch (error) {
+      showError("Logout Failed", "Something went wrong")
+    }
+  }
+
+  const cancelLogout = () => {
+    setShowLogoutConfirm(false)
+  }
+
+  const toggleDarkMode = () => {
+    setTheme(theme === "dark" ? "light" : "dark")
+  }
+
+  const handleEmailChange = async () => {
+    if (!newEmail.trim() || !/\S+@\S+\.\S+/.test(newEmail)) {
+      showError("Invalid Email", "Please enter a valid email address")
+      return
+    }
+
+    if (!userProfile || newEmail === userProfile.email) {
+      return
+    }
+
+    setIsEmailChangeLoading(true)
+
+    try {
+      await updateUserEmail(newEmail)
+      // Update local state
+      setUserProfile(prev => prev ? { ...prev, email: newEmail } : null)
+      showSuccess("Email Updated", `Your email has been changed to ${newEmail}`)
+    } catch (error) {
+      console.error('Error updating email:', error)
+      showError("Email Change Failed", error instanceof Error ? error.message : "Something went wrong")
+    } finally {
+      setIsEmailChangeLoading(false)
+    }
+  }
+
+  const handleOpenUserGuide = () => {
+    router.push("/user-guide")
+  }
+
+  const handleSupportInputChange = (field: string, value: string) => {
+    setSupportForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleSupportSubmit = async () => {
+    if (!supportForm.subject.trim() || !supportForm.message.trim()) {
+      showError("Incomplete Form", "Please fill in both subject and message")
+      return
+    }
+
+    setIsSupportLoading(true)
+
+    try {
+      await submitSupportMessage(supportForm.subject, supportForm.message)
+      setSupportSent(true)
+      setSupportForm({ subject: "", message: "" })
+      showSuccess("Message Sent", "We'll get back to you within 24 hours.")
+    } catch (error) {
+      console.error('Error submitting support message:', error)
+      showError("Send Failed", error instanceof Error ? error.message : "Something went wrong")
+    } finally {
+      setIsSupportLoading(false)
+    }
+  }
+
+  // Add the PasswordChangeModal before the return statement:
   return (
-    <div className="pt-16 lg:pt-20 pb-32 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Settings</h2>
-          <p className="text-gray-600 dark:text-gray-400">Settings view temporarily disabled for debugging.</p>
+    <>
+      <PasswordChangeModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={handlePasswordChangeSuccess}
+        onError={handlePasswordChangeError}
+      />
+
+      <div className="pt-16 lg:pt-20 pb-32 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto space-y-6">
+          {/* Account Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Account</h2>
+            </div>
+
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              {/* Current Email Display */}
+              <div className="px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Current Email</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{userProfile?.email || 'Loading...'}</p>
+                  </div>
+                  <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                    <svg
+                      className="w-4 h-4 text-gray-400 dark:text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Change Section */}
+              <div className="px-6 py-4">
+                <div className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="newEmail"
+                      className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+                    >
+                      Change Email
+                    </label>
+                    <input
+                      type="email"
+                      id="newEmail"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                      placeholder="Enter new email address"
+                      disabled={isEmailChangeLoading}
+                    />
+                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                      You'll receive a confirmation email to finalize the change.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleEmailChange}
+                    disabled={isEmailChangeLoading || !newEmail.trim()}
+                    className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-blue-400 dark:disabled:bg-blue-600 text-white font-medium py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 disabled:cursor-not-allowed active:scale-[0.98]"
+                  >
+                    {isEmailChangeLoading ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Sending...</span>
+                      </div>
+                    ) : (
+                      "Send Change Link"
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Change Password */}
+              <div className="px-6 py-4">
+                <button
+                  onClick={handleChangePassword}
+                  className="w-full flex items-center justify-between py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200 active:bg-gray-100 dark:active:bg-gray-600"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Change Password</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Update your account password</p>
+                  </div>
+                  <svg
+                    className="w-5 h-5 text-gray-400 dark:text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* App Preferences Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">App Preferences</h2>
+            </div>
+
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              {/* Dark Mode Toggle */}
+              <div className="px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Dark Mode</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Switch to dark theme</p>
+                  </div>
+                  <button
+                    onClick={toggleDarkMode}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
+                      theme === "dark" ? "bg-blue-600" : "bg-gray-200 dark:bg-gray-600"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                        theme === "dark" ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Support Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Support</h2>
+            </div>
+
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              {/* User Guide Button */}
+              <div className="px-6 py-4">
+                <button
+                  onClick={handleOpenUserGuide}
+                  className="w-full flex items-center justify-between py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200 active:bg-gray-100 dark:active:bg-gray-600"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Open User Guide</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Learn how to use BOP Tracker</p>
+                  </div>
+                  <svg
+                    className="w-5 h-5 text-gray-400 dark:text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Message Support Form */}
+              <div className="px-6 py-4">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Message Support</h3>
+
+                    {/* Subject Line (Optional) */}
+                    <div className="mb-4">
+                      <label
+                        htmlFor="supportSubject"
+                        className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+                      >
+                        Subject (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        id="supportSubject"
+                        value={supportForm.subject}
+                        onChange={(e) => handleSupportInputChange("subject", e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                        placeholder="Brief description of your issue"
+                        disabled={isSupportLoading}
+                      />
+                    </div>
+
+                    {/* Message Text Area */}
+                    <div className="mb-4">
+                      <label
+                        htmlFor="supportMessage"
+                        className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+                      >
+                        How can we help?
+                      </label>
+                      <textarea
+                        id="supportMessage"
+                        value={supportForm.message}
+                        onChange={(e) => handleSupportInputChange("message", e.target.value)}
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 resize-none"
+                        placeholder="Describe your question or issue in detail..."
+                        disabled={isSupportLoading}
+                      />
+                    </div>
+
+                    {/* Send Button */}
+                    <button
+                      onClick={handleSupportSubmit}
+                      disabled={isSupportLoading || !supportForm.message.trim()}
+                      className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-blue-400 dark:disabled:bg-blue-600 text-white font-medium py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 disabled:cursor-not-allowed active:scale-[0.98]"
+                    >
+                      {isSupportLoading ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Sending...</span>
+                        </div>
+                      ) : (
+                        "Send Message"
+                      )}
+                    </button>
+
+                    {/* Confirmation Message */}
+                    {supportSent && (
+                      <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            className="w-5 h-5 text-green-600 dark:text-green-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <p className="text-sm font-medium text-green-800 dark:text-green-400">
+                            Message sent successfully!
+                          </p>
+                        </div>
+                        <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                          We'll get back to you within 24 hours.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* App Info Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">About</h2>
+              </div>
+
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {/* Version */}
+                <div className="px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Version</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">BOP Tracker v1.0.0</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Logout Button */}
+              <div className="px-6 py-4 flex flex-col gap-4">
+                <button
+                  onClick={handleLogout}
+                  className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white font-medium py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98]"
+                >
+                  Log Out
+                </button>
+                {/* TEMP: Admin Panel Button */}
+                <button
+                  onClick={() => router.push("/admin")}
+                  className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 px-4 rounded-xl shadow-sm transition-all duration-200 active:scale-[0.98] border-2 border-yellow-600"
+                >
+                  TEMP: Go to Admin Panel
+                </button>
+              </div>
+
+              {/* Logout Confirmation Modal */}
+              {showLogoutConfirm && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center p-4 z-50">
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Log Out</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
+                      Are you sure you want to log out of your account?
+                    </p>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={cancelLogout}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-medium py-3 px-4 rounded-xl transition-colors duration-200"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={confirmLogout}
+                        className="flex-1 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200"
+                      >
+                        Log Out
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -1097,10 +1453,11 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
 
   // Add winery name state at the top of the component
   // const [wineryName] = useState("Maple Valley") // This would come from auth context
-  const [tasks, setTasks] = useState<Task[]>(tasksData)
+  const [tasks, setTasks] = useState<DatabaseTask[]>([])
+  const [tasksLoading, setTasksLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("today")
   // Add state for selected date at the top of the BOPTracker component:
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState(getHalifaxDate())
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
   const [prevCompletedCount, setPrevCompletedCount] = useState(0)
@@ -1115,45 +1472,60 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
       month: "long",
       day: "numeric",
       year: "numeric",
+      timeZone: "America/Halifax"
     })
   }
 
   const isToday = (date: Date) => {
-    const today = new Date()
-    return date.toDateString() === today.toDateString()
+    const todayHalifax = getTodayInHalifax()
+    const selectedDateHalifax = formatDateInHalifax(date)
+    return selectedDateHalifax === todayHalifax
   }
 
   const isFuture = (date: Date) => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const compareDate = new Date(date)
-    compareDate.setHours(0, 0, 0, 0)
-    return compareDate > today
+    const todayHalifax = getTodayInHalifax()
+    const selectedDateHalifax = formatDateInHalifax(date)
+    return selectedDateHalifax > todayHalifax
   }
 
   const goToPreviousDay = () => {
-    const newDate = new Date(selectedDate)
-    newDate.setDate(newDate.getDate() - 1)
-    setSelectedDate(newDate)
+    const previousDay = new Date(selectedDate)
+    previousDay.setDate(previousDay.getDate() - 1)
+    setSelectedDate(previousDay)
   }
 
   const goToNextDay = () => {
-    const newDate = new Date(selectedDate)
-    newDate.setDate(newDate.getDate() + 1)
-    setSelectedDate(newDate)
+    const nextDay = new Date(selectedDate)
+    nextDay.setDate(nextDay.getDate() + 1)
+    setSelectedDate(nextDay)
   }
 
   const goToToday = () => {
-    setSelectedDate(new Date())
+    setSelectedDate(getHalifaxDate())
   }
 
   // Update toggleTaskCompletion function
-  const toggleTaskCompletion = (taskId: number) => {
+  const toggleTaskCompletion = async (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
 
     try {
+      // Update in database with the task's actual due date
+      await updateTaskCompletion(taskId, !task.completed, task.dueDate)
+      
+      // Update local state immediately
       setTasks(tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)))
+      
+      // Force refresh of tasks to get updated batch stages
+      setTimeout(async () => {
+        try {
+          const refreshedTasks = await getTodaysTasks(selectedDate)
+          setTasks(refreshedTasks)
+        } catch (error) {
+          console.error('Error refreshing tasks:', error)
+        }
+      }, 500) // Small delay to allow database triggers to complete
+      
       // Removed toast notifications for task completion
     } catch (error) {
       showError("Update Failed", "Something went wrong")
@@ -1161,7 +1533,7 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
   }
 
   // Group tasks by type
-  const groupedTasks = tasks.reduce((groups: { [key: string]: Task[] }, task) => {
+  const groupedTasks = tasks.reduce((groups: { [key: string]: DatabaseTask[] }, task) => {
     const group = groups[task.type] || []
     group.push(task)
     groups[task.type] = group
@@ -1178,6 +1550,66 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
 
   const completedCount = tasks.filter((task) => task.completed).length
   const totalCount = tasks.length
+
+  // Load tasks when component mounts or date changes
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        setTasksLoading(true)
+        const dbTasks = await getTodaysTasks(selectedDate)
+        setTasks(dbTasks)
+      } catch (error) {
+        console.error('Error loading tasks:', error)
+        showError("Load Failed", "Failed to load tasks")
+      } finally {
+        setTasksLoading(false)
+      }
+    }
+
+    loadTasks()
+  }, [selectedDate, showError])
+
+  // Real-time subscriptions for task completions and batch updates
+  useEffect(() => {
+    const supabase = createClient()
+    
+    // Subscribe to task completions for real-time updates
+    const taskCompletionsSubscription = supabase
+      .channel('task_completions_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'task_completions'
+      }, () => {
+        // Reload tasks when task completions change
+        getTodaysTasks(selectedDate).then(setTasks).catch(console.error)
+      })
+      .subscribe()
+
+    // Subscribe to batch updates
+    const batchesSubscription = supabase
+      .channel('batches_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'batches'
+      }, () => {
+        // Reload tasks when batches change
+        getTodaysTasks(selectedDate).then(setTasks).catch(console.error)
+      })
+      .subscribe()
+
+    // Fallback: Refresh every 30 seconds
+    const intervalId = setInterval(() => {
+      getTodaysTasks(selectedDate).then(setTasks).catch(console.error)
+    }, 30000)
+
+    return () => {
+      supabase.removeChannel(taskCompletionsSubscription)
+      supabase.removeChannel(batchesSubscription)
+      clearInterval(intervalId)
+    }
+  }, [selectedDate])
 
   useEffect(() => {
     // Trigger confetti when all tasks become completed
@@ -1258,7 +1690,7 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
       case "today":
         // Filter tasks for selected date (for demo, we'll show all tasks but you'd filter by date in real app)
         const selectedDateTasks = tasks // In real app: filter tasks by selectedDate
-        const selectedGroupedTasks = selectedDateTasks.reduce((groups: { [key: string]: Task[] }, task) => {
+        const selectedGroupedTasks = selectedDateTasks.reduce((groups: { [key: string]: DatabaseTask[] }, task) => {
           const group = groups[task.type] || []
           group.push(task)
           groups[task.type] = group
@@ -1324,9 +1756,25 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
               )}
             </div>
 
+            {/* Loading State */}
+            {tasksLoading && (
+              <div className="flex flex-col items-center justify-center py-16 lg:py-24">
+                <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-gray-500 dark:text-gray-400">Loading today's tasks...</p>
+              </div>
+            )}
+
             {/* Task Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
-              {Object.entries(selectedGroupedTasks)
+            {!tasksLoading && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
+                {Object.entries(selectedGroupedTasks)
+                .filter(([groupType, groupTasks]) => {
+                  // Only show Overdue category if there are actual overdue tasks
+                  if (groupType === "Overdue") {
+                    return groupTasks.length > 0
+                  }
+                  return groupTasks.length > 0
+                })
                 .sort(([a], [b]) => {
                   const order = ["Overdue", "Put-Up Today", "Rack Today", "Filter Today", "Bottle Today"]
                   const aIndex = order.indexOf(a)
@@ -1474,10 +1922,11 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
                     </div>
                   </section>
                 ))}
-            </div>
+              </div>
+            )}
 
             {/* Empty State */}
-            {Object.keys(selectedGroupedTasks).length === 0 && (
+            {!tasksLoading && Object.keys(selectedGroupedTasks).length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 lg:py-24">
                 <div className="text-6xl lg:text-8xl mb-6">
                   {isFuture(selectedDate) ? "📅" : isToday(selectedDate) ? "🍷" : "📋"}
@@ -1507,9 +1956,10 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
 
                   <input
                     type="date"
-                    value={selectedDate.toISOString().split("T")[0]}
+                    value={formatDateInHalifax(selectedDate)}
                     onChange={(e) => {
-                      setSelectedDate(new Date(e.target.value))
+                      const newDate = new Date(e.target.value + 'T12:00:00')
+                      setSelectedDate(newDate)
                       setShowDatePicker(false)
                     }}
                     className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 mb-6"
@@ -1542,7 +1992,7 @@ export default function BOPTracker({ userProfile }: BOPTrackerProps) {
       case "new":
         return <NewBatchView />
       case "settings":
-        return <SettingsView userProfile={userProfile} />
+        return <SettingsView />
       default:
         return null
     }

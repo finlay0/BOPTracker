@@ -21,14 +21,17 @@ export async function createWinery(formData: FormData) {
     return { error: "Name and location are required." }
   }
 
-  const { error } = await supabase.from("wineries").insert({ name, location })
+  const { data, error } = await supabase.rpc('admin_create_winery', {
+    name_param: name,
+    location_param: location
+  })
 
   if (error) {
     return { error: error.message }
   }
 
   revalidatePath("/admin")
-  return { success: true }
+  return { success: true, data: data[0] }
 }
 
 export async function updateWinery(wineryId: number, formData: FormData) {

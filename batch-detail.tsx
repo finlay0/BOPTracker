@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import { ArrowLeft, Calendar, User, Wine, Clock, Edit2, Save, X } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowLeft, Calendar, User, Wine, Clock, Edit2, Save, X, Trash2, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { getBatch, updateBatchNotes, type Batch } from "@/lib/database"
 
 interface BatchDetailProps {
   batchId: string
@@ -11,27 +12,39 @@ interface BatchDetailProps {
 }
 
 export default function BatchDetail({ batchId, onBack }: BatchDetailProps) {
-  // Sample batch data - in real app this would come from API
-  const [batch, setBatch] = useState({
-    id: batchId,
-    bopNumber: "#1042",
-    customer: "Taylor",
-    wineKit: "Cabernet Sauvignon",
-    kitWeeks: 6,
-    putUp: "2024-06-15",
-    rack: "2024-06-29",
-    filter: "2024-07-13",
-    bottle: "2024-07-27",
-    status: "pending",
-    currentStage: "filter",
-    notes: "Customer requested extra clarification time",
-  })
-
+  const [batch, setBatch] = useState<Batch | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isEditingNotes, setIsEditingNotes] = useState(false)
-  const [editedNotes, setEditedNotes] = useState(batch.notes)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [isEditingBatch, setIsEditingBatch] = useState(false)
-  const [editedBatch, setEditedBatch] = useState({ ...batch })
+  const [editedNotes, setEditedNotes] = useState("")
+  const [notesLoading, setNotesLoading] = useState(false)
+
+  // Load batch data when component mounts
+  useEffect(() => {
+    const loadBatch = async () => {
+      try {
+        setLoading(true)
+        const batchData = await getBatch(batchId)
+        if (batchData) {
+          setBatch(batchData)
+          // Initialize notes with customer email if available
+          const initialNotes = batchData.notes || ""
+          const emailNote = batchData.customer_email ? `Customer Email: ${batchData.customer_email}` : ""
+          const combinedNotes = emailNote && initialNotes ? `${emailNote}\n\n${initialNotes}` : emailNote || initialNotes
+          setEditedNotes(combinedNotes)
+        } else {
+          setError("Batch not found")
+        }
+      } catch (err) {
+        console.error('Error loading batch:', err)
+        setError("Failed to load batch details")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadBatch()
+  }, [batchId])
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -47,8 +60,9 @@ export default function BatchDetail({ batchId, onBack }: BatchDetailProps) {
   }
 
   const getStageStatus = (stage: string) => {
+    if (!batch) return "pending"
     const stages = ["put-up", "rack", "filter", "bottle"]
-    const currentIndex = stages.indexOf(batch.currentStage)
+    const currentIndex = stages.indexOf(batch.current_stage)
     const stageIndex = stages.indexOf(stage)
 
     if (stageIndex < currentIndex) return "completed"
@@ -67,73 +81,81 @@ export default function BatchDetail({ batchId, onBack }: BatchDetailProps) {
     }
   }
 
-  const handleMarkStageComplete = () => {
-    const stages = ["put-up", "rack", "filter", "bottle", "completed"]
-    const currentIndex = stages.indexOf(batch.currentStage)
-
-    if (currentIndex < stages.length - 1) {
-      const nextStage = stages[currentIndex + 1]
-      setBatch((prev) => ({
-        ...prev,
-        currentStage: nextStage,
-        status: nextStage === "completed" ? "done" : "pending",
-      }))
-
-      // Show success message
-      alert(
-        `Stage marked as complete! ${nextStage === "completed" ? "Batch is now finished." : `Next stage: ${nextStage}`}`,
-      )
+  const handleSaveNotes = async () => {
+    if (!batch) return
+    
+    try {
+      setNotesLoading(true)
+      // Extract customer email from notes if it was added
+      const emailPrefix = "Customer Email: "
+      const emailLineEnd = editedNotes.indexOf('\n')
+      let actualNotes = editedNotes
+      
+      if (editedNotes.startsWith(emailPrefix)) {
+        actualNotes = emailLineEnd > -1 ? editedNotes.substring(emailLineEnd + 2) : ""
+      }
+      
+      await updateBatchNotes(batch.id, actualNotes)
+      setBatch(prev => prev ? { ...prev, notes: actualNotes } : null)
+      setIsEditingNotes(false)
+    } catch (error) {
+      console.error('Error saving notes:', error)
+      alert("Failed to save notes")
+    } finally {
+      setNotesLoading(false)
     }
   }
 
-  const handleEditBatch = () => {
-    setEditedBatch({ ...batch })
-    setIsEditingBatch(true)
-  }
-
-  const handleSaveBatchEdit = () => {
-    setBatch(editedBatch)
-    setIsEditingBatch(false)
-    alert("Batch updated successfully!")
-  }
-
-  const handleCancelBatchEdit = () => {
-    setEditedBatch({ ...batch })
-    setIsEditingBatch(false)
-  }
-
-  const handleBatchInputChange = (field: string, value: string | number) => {
-    setEditedBatch((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleDeleteBatch = () => {
-    setShowDeleteConfirm(true)
-  }
-
-  const confirmDelete = () => {
-    // This would typically call an API to delete the batch
-    alert("Batch deleted successfully!")
-    setShowDeleteConfirm(false)
-    onBack() // Go back to batches list
-  }
-
-  const cancelDelete = () => {
-    setShowDeleteConfirm(false)
-  }
-
-  const handleSaveNotes = () => {
-    setBatch((prev) => ({ ...prev, notes: editedNotes }))
-    setIsEditingNotes(false)
-    // In real app, this would save to backend
-    alert("Notes saved successfully!")
-  }
-
   const handleCancelEditNotes = () => {
-    setEditedNotes(batch.notes)
+    if (!batch) return
+    const initialNotes = batch.notes || ""
+    const emailNote = batch.customer_email ? `Customer Email: ${batch.customer_email}` : ""
+    const combinedNotes = emailNote && initialNotes ? `${emailNote}\n\n${initialNotes}` : emailNote || initialNotes
+    setEditedNotes(combinedNotes)
     setIsEditingNotes(false)
   }
 
-  const canMarkComplete = batch.currentStage !== "completed"
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-24 lg:pt-32 pb-32 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-4 mb-8">
+            <Button onClick={onBack} variant="outline" size="sm" className="flex items-center gap-2 bg-transparent">
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+          </div>
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-500 dark:text-gray-400">Loading batch details...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error || !batch) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-24 lg:pt-32 pb-32 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-4 mb-8">
+            <Button onClick={onBack} variant="outline" size="sm" className="flex items-center gap-2 bg-transparent">
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+          </div>
+          <div className="flex flex-col items-center justify-center py-16">
+            <p className="text-red-600 dark:text-red-400 text-lg mb-4">{error || "Batch not found"}</p>
+            <Button onClick={onBack} variant="outline">
+              Go Back
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-24 lg:pt-32 pb-32 px-4 sm:px-6 lg:px-8">
@@ -145,8 +167,8 @@ export default function BatchDetail({ batchId, onBack }: BatchDetailProps) {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">{batch.bopNumber}</h1>
-            <p className="text-gray-600 dark:text-gray-400">{batch.wineKit}</p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">#{batch.bop_number.toString().padStart(4, '0')}</h1>
+            <p className="text-gray-600 dark:text-gray-400">{batch.kit_name}</p>
           </div>
         </div>
 
@@ -157,188 +179,88 @@ export default function BatchDetail({ batchId, onBack }: BatchDetailProps) {
             <Card className="p-6 bg-white dark:bg-gray-800">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Batch Overview</h2>
-                {!isEditingBatch && (
-                  <Button onClick={handleEditBatch} variant="outline" size="sm" className="bg-transparent">
-                    <Edit2 className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                )}
               </div>
 
-              {isEditingBatch ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                        Customer
-                      </label>
-                      <input
-                        type="text"
-                        value={editedBatch.customer}
-                        onChange={(e) => handleBatchInputChange("customer", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                        Wine Kit
-                      </label>
-                      <input
-                        type="text"
-                        value={editedBatch.wineKit}
-                        onChange={(e) => handleBatchInputChange("wineKit", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                        Duration (weeks)
-                      </label>
-                      <select
-                        value={editedBatch.kitWeeks}
-                        onChange={(e) => handleBatchInputChange("kitWeeks", Number.parseInt(e.target.value))}
-                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value={4}>4 weeks</option>
-                        <option value={5}>5 weeks</option>
-                        <option value={6}>6 weeks</option>
-                        <option value={8}>8 weeks</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Status</label>
-                      <select
-                        value={editedBatch.status}
-                        onChange={(e) => handleBatchInputChange("status", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value="pending">In Progress</option>
-                        <option value="done">Complete</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 pt-4">
-                    <Button onClick={handleSaveBatchEdit} className="bg-blue-600 hover:bg-blue-700 text-white">
-                      <Save className="w-4 h-4 mr-2" />
-                      Save Changes
-                    </Button>
-                    <Button onClick={handleCancelBatchEdit} variant="outline" className="bg-transparent">
-                      <X className="w-4 h-4 mr-2" />
-                      Cancel
-                    </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-3">
+                  <User className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Customer</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{batch.customer_name}</p>
                   </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3">
-                    <User className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Customer</p>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{batch.customer}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Wine className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Wine Kit</p>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{batch.wineKit}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Duration</p>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{batch.kitWeeks} weeks</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Calendar className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          batch.status === "done"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                            : "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
-                        }`}
-                      >
-                        {batch.status === "done" ? "Complete" : "In Progress"}
-                      </span>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <Wine className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Wine Kit</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{batch.kit_name}</p>
                   </div>
                 </div>
-              )}
+                <div className="flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Duration</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{batch.kit_weeks} weeks</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        batch.status === "completed"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                          : "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
+                      }`}
+                    >
+                      {batch.status === "completed" ? "Complete" : "In Progress"}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </Card>
 
             {/* Timeline */}
             <Card className="p-6 bg-white dark:bg-gray-800">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Production Timeline</h2>
-                {!isEditingBatch && (
-                  <Button onClick={handleEditBatch} variant="outline" size="sm" className="bg-transparent">
-                    <Edit2 className="w-4 h-4 mr-2" />
-                    Edit Dates
-                  </Button>
-                )}
               </div>
 
-              {isEditingBatch ? (
-                <div className="space-y-4">
-                  {[
-                    { stage: "putUp", label: "Put-Up Date" },
-                    { stage: "rack", label: "Racking Date" },
-                    { stage: "filter", label: "Filtering Date" },
-                    { stage: "bottle", label: "Bottling Date" },
-                  ].map((item) => (
-                    <div key={item.stage}>
-                      <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                        {item.label}
-                      </label>
-                      <input
-                        type="date"
-                        value={formatDateForInput(editedBatch[item.stage as keyof typeof editedBatch] as string)}
-                        onChange={(e) => handleBatchInputChange(item.stage, e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {[
-                    { stage: "put-up", label: "Put-Up", date: batch.putUp },
-                    { stage: "rack", label: "Racking", date: batch.rack },
-                    { stage: "filter", label: "Filtering", date: batch.filter },
-                    { stage: "bottle", label: "Bottling", date: batch.bottle },
-                  ].map((item, index) => {
-                    const status = getStageStatus(item.stage)
-                    return (
-                      <div key={item.stage} className="flex items-center gap-4">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                            status === "completed"
-                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                              : status === "current"
-                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                                : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                          }`}
-                        >
-                          {status === "completed" ? "✓" : index + 1}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-medium text-gray-900 dark:text-gray-100">{item.label}</h3>
-                            <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(status)}`}>
-                              {status === "completed" ? "Done" : status === "current" ? "In Progress" : "Pending"}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{formatDate(item.date)}</p>
-                        </div>
+              <div className="space-y-6">
+                {[
+                  { stage: "put-up", label: "Put-Up", date: batch.date_put_up },
+                  { stage: "rack", label: "Racking", date: batch.date_rack },
+                  { stage: "filter", label: "Filtering", date: batch.date_filter },
+                  { stage: "bottle", label: "Bottling", date: batch.date_bottle },
+                ].map((item, index) => {
+                  const status = getStageStatus(item.stage)
+                  return (
+                    <div key={item.stage} className="flex items-center gap-4">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                          status === "completed"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                            : status === "current"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                              : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                        }`}
+                      >
+                        {status === "completed" ? "✓" : index + 1}
                       </div>
-                    )
-                  })}
-                </div>
-              )}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-medium text-gray-900 dark:text-gray-100">{item.label}</h3>
+                          <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(status)}`}>
+                            {status === "completed" ? "Done" : status === "current" ? "In Progress" : "Pending"}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{item.date ? formatDate(item.date) : 'Not scheduled'}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </Card>
           </div>
 
@@ -381,58 +303,19 @@ export default function BatchDetail({ batchId, onBack }: BatchDetailProps) {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-gray-600 dark:text-gray-400">{batch.notes || "No notes added yet."}</p>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {batch.customer_email && (
+                    <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border-l-2 border-blue-200 dark:border-blue-800">
+                      <strong>Customer Email:</strong> {batch.customer_email}
+                    </div>
+                  )}
+                  <div>{batch.notes || "No additional notes."}</div>
+                </div>
               )}
             </Card>
 
-            {/* Actions */}
-            <Card className="p-6 bg-white dark:bg-gray-800">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Actions</h3>
-              <div className="space-y-3">
-                {canMarkComplete && (
-                  <Button onClick={handleMarkStageComplete} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                    Mark Current Stage Complete
-                  </Button>
-                )}
-                <Button
-                  onClick={handleDeleteBatch}
-                  variant="outline"
-                  className="w-full text-red-600 dark:text-red-400 border-red-300 dark:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300 hover:border-red-400 dark:hover:border-red-500 bg-transparent"
-                >
-                  Delete Batch
-                </Button>
-              </div>
-            </Card>
           </div>
         </div>
-
-        {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center p-4 z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete Batch</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Are you sure you want to delete batch {batch.bopNumber} for {batch.customer}? This action cannot be
-                undone.
-              </p>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={cancelDelete}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-medium py-3 px-4 rounded-xl transition-colors duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmDelete}
-                  className="flex-1 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

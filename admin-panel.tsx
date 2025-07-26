@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Plus, Edit2, Check, X, MessageSquare, Users, Building2 } from "lucide-react"
-import type { Winery, User, SupportMessage } from "../types/admin"
+import type { Winery, User, SupportMessage } from "./types/admin"
 import {
   createWinery,
   updateWinery,
@@ -17,7 +17,22 @@ import {
   createUser,
   deleteUser,
   toggleSupportMessageStatus,
-} from "../app/admin/actions"
+} from "./app/admin/actions"
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+function ShowUserIdButton() {
+  async function showId() {
+    const { data: { user } } = await supabase.auth.getUser()
+    alert('Your Auth User ID: ' + user?.id)
+    console.log('Your Auth User ID:', user?.id)
+  }
+  return <button onClick={showId} style={{marginBottom: 16, padding: 8, background: '#eee', borderRadius: 4}}>Show My Auth User ID</button>
+}
 
 interface AdminPanelProps {
   initialWineries: Winery[]
@@ -55,7 +70,7 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
   const [showNewUserForm, setShowNewUserForm] = useState(false)
 
   const selectedWinery = wineries.find((w) => w.id === selectedWineryId)
-  const selectedWineryUsers = users.filter((u) => u.wineryId === selectedWineryId)
+  const selectedWineryUsers = users.filter((u) => u.winery_id === selectedWineryId)
 
   const handleDeleteWinery = (wineryId: number) => {
     if (confirm("Are you sure you want to delete this winery? This will also delete all associated users.")) {
@@ -139,6 +154,7 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <ShowUserIdButton />
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Admin Panel</h1>
@@ -196,7 +212,10 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
                           <h3 className="font-medium text-gray-900 dark:text-gray-100">{winery.name}</h3>
                           <p className="text-sm text-gray-600 dark:text-gray-400">{winery.location}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                            Access Code: <span className="font-mono font-medium">{winery.accessCode}</span>
+                            Join Code: <span className="font-mono font-medium">{winery.join_code}</span>
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500">
+                            Users: {winery.user_count}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -294,13 +313,13 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
                       className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
                     >
                       <div>
-                        <h4 className="font-medium text-gray-900 dark:text-gray-100">{user.name}</h4>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100">{user.full_name}</h4>
                         <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-500">
-                          Joined: {new Date(user.createdAt).toLocaleDateString()}
+                          Joined: {new Date(user.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <Button onClick={() => handleDeleteUser(user.id.toString())} variant="destructive" size="sm">
+                      <Button onClick={() => handleDeleteUser(user.id)} variant="destructive" size="sm">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -383,10 +402,10 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
                         </Badge>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        From: {message.userEmail} ({message.wineryName})
+                        From: {message.user_email} ({message.winery_name})
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-500">
-                        {new Date(message.createdAt).toLocaleDateString()}
+                        {new Date(message.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex gap-2">

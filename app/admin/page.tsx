@@ -4,7 +4,7 @@ import AdminPanel from "@/admin-panel"
 import type { Winery, User, SupportMessage } from "@/types/admin"
 
 export default async function AdminPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { user },
@@ -20,13 +20,19 @@ export default async function AdminPage() {
     return redirect("/")
   }
 
-  // Fetch all data for the admin panel
-  const { data: wineries } = await supabase.from("wineries").select("*").order("created_at")
-  const { data: users } = await supabase.from("users").select("*").order("created_at")
-  const { data: supportMessages } = await supabase
-    .from("support_messages")
-    .select("*")
-    .order("created_at", { ascending: false })
+  // Debug: Log user info
+  console.log("Admin page - User ID:", user.id)
+  console.log("Admin page - User role:", userProfile?.role)
+
+  // Fetch all data for the admin panel using RPC functions
+  const { data: wineries, error: wineriesError } = await supabase.rpc('admin_get_wineries_with_stats')
+  const { data: users, error: usersError } = await supabase.rpc('admin_get_users_with_winery')
+  const { data: supportMessages, error: supportError } = await supabase.rpc('admin_get_support_messages')
+
+  // Debug: Log any RPC errors
+  if (wineriesError) console.error("Wineries RPC error:", wineriesError)
+  if (usersError) console.error("Users RPC error:", usersError)
+  if (supportError) console.error("Support RPC error:", supportError)
 
   return (
     <AdminPanel

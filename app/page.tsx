@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import BOPTracker from "@/bop-tracker"
 
 export default async function HomePage() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { user },
