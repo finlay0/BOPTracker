@@ -29,7 +29,7 @@ export default function LoginPage() {
 
     if (isSignUp) {
       // Sign Up
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -42,9 +42,14 @@ export default function LoginPage() {
       if (error) {
         setError(error.message)
       } else {
-        // On successful sign-up, Supabase sends a confirmation email.
-        // You can show a message to the user here.
-        setError("Check your email for the confirmation link!")
+        // If email confirmation is disabled, session is present and we can link immediately
+        if (signUpData.session && joinCode.trim()) {
+          await supabase.rpc('join_winery_by_code', { code: joinCode.trim() })
+          router.push('/')
+          router.refresh()
+        } else {
+          setError('Check your email for the confirmation link!')
+        }
       }
     } else {
       // Sign In
@@ -55,6 +60,10 @@ export default function LoginPage() {
       if (error) {
         setError(error.message)
       } else {
+        // Link user to winery using join code
+        if (joinCode.trim()) {
+          await supabase.rpc('join_winery_by_code', { code: joinCode.trim() })
+        }
         router.push("/")
         router.refresh() // to ensure server components re-render
       }

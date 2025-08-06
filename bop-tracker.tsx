@@ -621,10 +621,10 @@ function NewBatchView() {
     )
 
     return {
-      putUp: new Date(dates.putUp),
-      racking: new Date(dates.rack),
-      filtering: new Date(dates.filter),
-      bottling: new Date(dates.bottle),
+      putUp: new Date(dates.putUp + 'T12:00:00'),
+      racking: new Date(dates.rack + 'T12:00:00'),
+      filtering: new Date(dates.filter + 'T12:00:00'),
+      bottling: new Date(dates.bottle + 'T12:00:00'),
     }
   }
 
@@ -1181,7 +1181,7 @@ function SettingsView() {
 
                   <button
                     onClick={handleEmailChange}
-                    disabled={isEmailChangeLoading || !newEmail.trim()}
+                    disabled={isEmailChangeLoading || !(newEmail ?? '').trim()}
                     className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-blue-400 dark:disabled:bg-blue-600 text-white font-medium py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 disabled:cursor-not-allowed active:scale-[0.98]"
                   >
                     {isEmailChangeLoading ? (
@@ -1395,13 +1395,14 @@ function SettingsView() {
                 >
                   Log Out
                 </button>
-                {/* TEMP: Admin Panel Button */}
+                {userProfile?.role === "owner" && (
                 <button
                   onClick={() => router.push("/admin")}
                   className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 px-4 rounded-xl shadow-sm transition-all duration-200 active:scale-[0.98] border-2 border-yellow-600"
                 >
-                  TEMP: Go to Admin Panel
+                  Admin Panel
                 </button>
+              )}
               </div>
 
               {/* Logout Confirmation Modal */}

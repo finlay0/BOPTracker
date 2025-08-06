@@ -10,17 +10,22 @@ export function getHalifaxDate(): Date {
 
 // Helper function to format date in Halifax timezone
 export function formatDateInHalifax(date: Date): string {
-  return date.toLocaleDateString("en-US", { 
-    timeZone: HALIFAX_TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).split('/').reverse().join('-') // Convert MM/DD/YYYY to YYYY-MM-DD
+  // Use more reliable date formatting to avoid locale issues
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 // Helper function to get today's date string in Halifax timezone
 export function getTodayInHalifax(): string {
   return formatDateInHalifax(getHalifaxDate())
+}
+
+// Helper function to convert MM/DD/YYYY to YYYY-MM-DD
+function convertMMDDYYYYtoYYYYMMDD(dateString: string): string {
+  const [month, day, year] = dateString.split('/')
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
 }
 
 export interface Batch {
@@ -36,7 +41,7 @@ export interface Batch {
   date_filter: string | null
   date_bottle: string | null
   status: 'pending' | 'completed'
-  current_stage: 'sale' | 'put-up' | 'rack' | 'filter' | 'bottle' | 'completed'
+  current_stage: 'sale' | 'put-up' | 'racked' | 'filtered' | 'bottled' | 'completed'
   notes?: string
   winery_id: string
   created_at: string
@@ -81,9 +86,17 @@ export function calculateWineDates(
   if (putUpNow) {
     putUp = getHalifaxDate()
   } else if (putUpDate) {
-    putUp = new Date(putUpDate + 'T12:00:00') // Add time to avoid timezone issues
+    // Parse putUpDate - assume MM/DD/YYYY format from form
+    const normalizedPutUpDate = putUpDate.includes('/') 
+      ? convertMMDDYYYYtoYYYYMMDD(putUpDate)
+      : putUpDate
+    putUp = new Date(normalizedPutUpDate + 'T12:00:00')
   } else {
-    putUp = new Date(dateOfSale + 'T12:00:00')
+    // Parse dateOfSale - assume MM/DD/YYYY format from form
+    const normalizedSaleDate = dateOfSale.includes('/') 
+      ? convertMMDDYYYYtoYYYYMMDD(dateOfSale)
+      : dateOfSale
+    putUp = new Date(normalizedSaleDate + 'T12:00:00')
   }
 
   // Racking: 2 weeks after put-up
@@ -119,9 +132,9 @@ export function getCurrentStage(batch: Batch): string {
   
   if (!batch.date_put_up || batch.date_put_up > today) return 'sale'
   if (!batch.date_rack || batch.date_rack > today) return 'put-up'
-  if (!batch.date_filter || batch.date_filter > today) return 'rack'
-  if (!batch.date_bottle || batch.date_bottle > today) return 'filter'
-  return batch.status === 'completed' ? 'completed' : 'bottle'
+  if (!batch.date_filter || batch.date_filter > today) return 'racked'
+  if (!batch.date_bottle || batch.date_bottle > today) return 'filtered'
+  return batch.status === 'completed' ? 'completed' : 'bottled'
 }
 
 // Create a new batch
@@ -140,22 +153,56 @@ export async function createBatch(data: CreateBatchData): Promise<Batch> {
   
   if (!userProfile?.winery_id) throw new Error('User not associated with a winery')
 
-  // Get next BOP number for this winery
-  const { data: bopData, error: bopError } = await supabase
-    .rpc('get_next_bop_number', { winery_id: userProfile.winery_id })
+  // Get next BOP number for this winery using the RPC function
+  const { data: bopNumber, error: rpcError } = await supabase
+    .rpc('get_next_bop_number', { winery_id_param: userProfile.winery_id })
+
+  if (rpcError) {
+    console.error('Error getting next BOP number:', rpcError)
+    throw new Error(`Failed to get next BOP number: ${rpcError.message}`)
+  }
   
-  if (bopError) throw bopError
-  const bopNumber = bopData
+  console.log('Final generated BOP number:', bopNumber)
+  
+  // Validate BOP number
+  if (!bopNumber || bopNumber < 1) {
+    throw new Error(`Invalid BOP number generated: ${bopNumber}`)
+  }
 
   // Calculate dates
+  console.log('Calculating dates with:', {
+    date_of_sale: data.date_of_sale,
+    kit_weeks: data.kit_weeks,
+    date_put_up: data.date_put_up,
+    put_up_now: data.put_up_now
+  })
+  
   const dates = calculateWineDates(
     data.date_of_sale,
     data.kit_weeks,
     data.date_put_up,
     data.put_up_now
   )
+  
+  console.log('Calculated dates:', dates)
 
   // Create batch
+  console.log('Attempting to create batch with data:', {
+    winery_id: userProfile.winery_id,
+    bop_number: bopNumber,
+    customer_name: data.customer_name,
+    customer_email: data.customer_email || null,
+    kit_name: data.kit_name,
+    kit_weeks: data.kit_weeks,
+    date_of_sale: data.date_of_sale,
+    date_put_up: dates.putUp,
+    date_rack: dates.rack,
+    date_filter: dates.filter,
+    date_bottle: dates.bottle,
+    status: 'pending',
+    current_stage: data.put_up_now ? 'put-up' : 'sale'
+  })
+
   const { data: batch, error } = await supabase
     .from('batches')
     .insert({
@@ -171,12 +218,21 @@ export async function createBatch(data: CreateBatchData): Promise<Batch> {
       date_filter: dates.filter,
       date_bottle: dates.bottle,
       status: 'pending',
-      current_stage: 'put-up'
+      current_stage: data.put_up_now ? 'put-up' : 'sale'
     })
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    console.error('Supabase insert error:', error)
+    console.error('Error details:', JSON.stringify(error, null, 2))
+    console.error('Error message:', error.message)
+    console.error('Error code:', error.code)
+    console.error('Error hint:', error.hint)
+    throw new Error(`Database insert failed: ${error.message || 'Unknown error'}`)
+  }
+  
+  console.log('Successfully created batch:', batch)
   return batch
 }
 
@@ -187,17 +243,40 @@ export async function getBatches(): Promise<Batch[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('User not authenticated')
   
+  // First get user's winery_id
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('winery_id')
+    .eq('id', user.id)
+    .single()
+  
+  if (!userProfile?.winery_id) throw new Error('User not associated with a winery')
+  
+  // Then get batches for that winery
   const { data, error } = await supabase
     .from('batches')
-    .select(`
-      *,
-      users!inner(winery_id)
-    `)
-    .eq('users.id', user.id)
+    .select('*')
+    .eq('winery_id', userProfile.winery_id)
     .order('bop_number', { ascending: false })
 
   if (error) throw error
   return data || []
+}
+
+// Type definition for the get_tasks_for_date RPC response
+interface TaskFromRPC {
+  task_id: string;
+  category: string;
+  action_name: string;
+  bop_number: number;
+  kit_name: string;
+  customer_name: string;
+  is_completed: boolean;
+  due_date: string;
+  batch_id: number;
+  is_overdue: boolean;
+  completed_by: string;
+  completed_at: string;
 }
 
 // Get today's tasks using the new RPC function
@@ -216,7 +295,7 @@ export async function getTodaysTasks(selectedDate?: Date): Promise<Task[]> {
   if (!tasksData) return []
 
   // Convert RPC results to Task interface
-  return tasksData.map(task => ({
+  return (tasksData as TaskFromRPC[]).map(task => ({
     id: task.task_id,
     type: task.category,
     action: task.action_name,
@@ -233,13 +312,19 @@ export async function getTodaysTasks(selectedDate?: Date): Promise<Task[]> {
 }
 
 
+
 // Update task completion status using RPC functions
 export async function updateTaskCompletion(taskId: string, completed: boolean, dueDate?: string): Promise<void> {
   const supabase = createClient()
   
   // Parse taskId to get batch_id and task_type
-  // Format: "batch_id-task_type" (e.g., "1-rack")
-  const [batchIdStr, taskType] = taskId.split('-')
+  // Format: "batchId-task_type" where task_type may itself contain dashes (e.g., "18-put-up")
+  const dashIdx = taskId.indexOf('-')
+  if (dashIdx === -1) {
+    throw new Error('Invalid task ID format')
+  }
+  const batchIdStr = taskId.slice(0, dashIdx)
+  const taskType = taskId.slice(dashIdx + 1)
   const batchId = parseInt(batchIdStr)
   
   if (!batchId || !taskType) {
@@ -278,14 +363,20 @@ export async function getBatch(id: string): Promise<Batch | null> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('User not authenticated')
   
+  // Verify user's winery_id
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('winery_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!userProfile?.winery_id) throw new Error('User not associated with a winery')
+
   const { data, error } = await supabase
     .from('batches')
-    .select(`
-      *,
-      users!inner(winery_id)
-    `)
+    .select('*')
     .eq('id', id)
-    .eq('users.id', user.id)
+    .eq('winery_id', userProfile.winery_id)
     .single()
 
   if (error) throw error
@@ -343,7 +434,7 @@ export async function getUserSettingsProfile(): Promise<UserSettingsProfile> {
     .single()
 
   if (error) throw error
-  return data
+  return data as UserSettingsProfile
 }
 
 // Update user email

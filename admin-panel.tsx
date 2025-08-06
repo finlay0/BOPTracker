@@ -18,12 +18,9 @@ import {
   deleteUser,
   toggleSupportMessageStatus,
 } from "./app/admin/actions"
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createClient()
 
 function ShowUserIdButton() {
   async function showId() {
@@ -51,12 +48,11 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
 
   const [selectedWineryId, setSelectedWineryId] = useState<number | null>(null)
   const [editingWineryId, setEditingWineryId] = useState<number | null>(null)
-  const [editWineryForm, setEditWineryForm] = useState({ name: "", location: "" })
+  const [editWineryForm, setEditWineryForm] = useState({ name: "" })
 
   // New winery form
   const [newWineryForm, setNewWineryForm] = useState({
-    name: "",
-    location: "",
+        name: "",
   })
 
   // New user form
@@ -93,7 +89,7 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
     const formData = new FormData(e.target as HTMLFormElement)
     startTransition(() => {
       createWinery(formData).then(() => {
-        setNewWineryForm({ name: "", location: "" })
+        setNewWineryForm({ name: "" })
         setShowNewWineryForm(false)
       })
     })
@@ -115,7 +111,7 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
 
   const handleEditWinery = (winery: Winery) => {
     setEditingWineryId(winery.id)
-    setEditWineryForm({ name: winery.name, location: winery.location })
+    setEditWineryForm({ name: winery.name })
   }
 
   const handleSaveWineryEdit = (e: React.FormEvent) => {
@@ -125,14 +121,14 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
     startTransition(() => {
       updateWinery(editingWineryId, formData).then(() => {
         setEditingWineryId(null)
-        setEditWineryForm({ name: "", location: "" })
+        setEditWineryForm({ name: "" })
       })
     })
   }
 
   const handleCancelWineryEdit = () => {
     setEditingWineryId(null)
-    setEditWineryForm({ name: "", location: "" })
+    setEditWineryForm({ name: "" })
   }
 
   const handleToggleSupportMessage = (messageId: number, status: "open" | "resolved") => {
@@ -189,7 +185,7 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
                     {editingWineryId === winery.id ? (
                       <form onSubmit={handleSaveWineryEdit} className="space-y-3">
                         <Input name="name" defaultValue={editWineryForm.name} placeholder="Winery name" />
-                        <Input name="location" defaultValue={editWineryForm.location} placeholder="Location" />
+                        
                         <div className="flex gap-2">
                           <Button type="submit" size="sm" className="flex items-center gap-1">
                             <Check className="w-3 h-3" />
@@ -210,7 +206,7 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="font-medium text-gray-900 dark:text-gray-100">{winery.name}</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{winery.location}</p>
+
                           <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                             Join Code: <span className="font-mono font-medium">{winery.join_code}</span>
                           </p>
@@ -255,10 +251,7 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
                       <Label htmlFor="wineryName">Winery Name</Label>
                       <Input id="wineryName" name="name" placeholder="Enter winery name" />
                     </div>
-                    <div>
-                      <Label htmlFor="wineryLocation">Location</Label>
-                      <Input id="wineryLocation" name="location" placeholder="Enter location" />
-                    </div>
+
                     <div className="flex gap-2">
                       <Button type="submit" size="sm">
                         Create Winery
@@ -266,7 +259,7 @@ export default function AdminPanel({ initialWineries, initialUsers, initialSuppo
                       <Button
                         onClick={() => {
                           setShowNewWineryForm(false)
-                          setNewWineryForm({ name: "", location: "" })
+                          setNewWineryForm({ name: "" })
                         }}
                         variant="outline"
                         size="sm"

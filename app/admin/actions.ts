@@ -1,6 +1,8 @@
 "use server"
 import { createClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
+import { createClient as createServerSupabase } from "@/lib/supabase/server"
 
 // This admin client can bypass RLS
 const createAdminClient = () => {
@@ -12,18 +14,28 @@ const createAdminClient = () => {
   })
 }
 
-export async function createWinery(formData: FormData) {
-  const supabase = createAdminClient()
-  const name = formData.get("name") as string
-  const location = formData.get("location") as string
+// client that uses the signed-in owner's JWT from cookies
+const createOwnerClient = async () => {
+  const cookieStore = await cookies()
+  const accessToken = cookieStore.get('sb-access-token')?.value
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    global: {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    },
+  })
+  return supabase
+}
 
-  if (!name || !location) {
-    return { error: "Name and location are required." }
+export async function createWinery(formData: FormData) {
+    const supabase = await createServerSupabase()
+  const name = formData.get("name") as string
+
+  if (!name) {
+    return { error: "Name is required." }
   }
 
   const { data, error } = await supabase.rpc('admin_create_winery', {
-    name_param: name,
-    location_param: location
+    name_param: name
   })
 
   if (error) {
@@ -35,15 +47,14 @@ export async function createWinery(formData: FormData) {
 }
 
 export async function updateWinery(wineryId: number, formData: FormData) {
-  const supabase = createAdminClient()
+    const supabase = await createServerSupabase()
   const name = formData.get("name") as string
-  const location = formData.get("location") as string
 
-  if (!name || !location) {
-    return { error: "Name and location are required." }
+  if (!name) {
+    return { error: "Name is required." }
   }
 
-  const { error } = await supabase.from("wineries").update({ name, location }).eq("id", wineryId)
+  const { error } = await supabase.from("wineries").update({ name }).eq("id", wineryId)
 
   if (error) {
     return { error: error.message }
@@ -54,7 +65,7 @@ export async function updateWinery(wineryId: number, formData: FormData) {
 }
 
 export async function deleteWinery(wineryId: number) {
-  const supabase = createAdminClient()
+    const supabase = await createServerSupabase()
 
   // Supabase is configured with cascading deletes, so deleting a winery
   // will also delete associated users (in public.users) and other related data.
@@ -77,7 +88,7 @@ export async function deleteWinery(wineryId: number) {
 }
 
 export async function createUser(formData: FormData) {
-  const supabase = createAdminClient()
+    const supabase = await createServerSupabase()
   const email = formData.get("email") as string
   const password = formData.get("password") as string
   const name = formData.get("name") as string
@@ -112,7 +123,7 @@ export async function createUser(formData: FormData) {
 }
 
 export async function deleteUser(userId: string) {
-  const supabase = createAdminClient()
+    const supabase = await createServerSupabase()
   const { error } = await supabase.auth.admin.deleteUser(userId)
 
   if (error) {
@@ -124,7 +135,7 @@ export async function deleteUser(userId: string) {
 }
 
 export async function toggleSupportMessageStatus(messageId: number, currentStatus: "open" | "resolved") {
-  const supabase = createAdminClient()
+    const supabase = await createServerSupabase()
   const newStatus = currentStatus === "open" ? "resolved" : "open"
 
   const { error } = await supabase.from("support_messages").update({ status: newStatus }).eq("id", messageId)
